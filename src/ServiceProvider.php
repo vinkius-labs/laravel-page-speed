@@ -21,6 +21,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/laravel-page-speed.php', 'laravel-page-speed.php');
+        $this->mergeConfigFrom(__DIR__ . '/../config/laravel-page-speed.php', 'laravel-page-speed');
     }
 }

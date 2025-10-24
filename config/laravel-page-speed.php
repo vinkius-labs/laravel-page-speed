@@ -21,8 +21,26 @@ return [
     | Skip Routes paths to exclude.
     | You can use * as wildcard.
     |
+    | Development/Debug Tools (Issue #164):
+    | If you've customized the routes for debug tools in your application
+    | (e.g., Horizon at '/admin/horizon' or Telescope at '/debug/telescope'),
+    | you MUST update these patterns to match your custom routes.
+    |
+    | Examples of custom routes:
+    |   'admin/horizon/*'      // Horizon::routes(['domain' => null, 'path' => 'admin/horizon'])
+    |   'debug/telescope/*'    // Telescope::$path = 'debug/telescope'
+    |   'my-path/clockwork/*'  // Custom Clockwork path
+    |
     */
     'skip' => [
+        // Development/Debug Tools (Issue #164)
+        '_debugbar/*',    // Laravel Debugbar (usually fixed path)
+        'horizon/*',      // Laravel Horizon (default, change if customized)
+        '_ignition/*',    // Laravel Ignition - Error Pages (usually fixed path)
+        'clockwork/*',    // Clockwork (default, change if customized)
+        'telescope/*',    // Laravel Telescope (default, change if customized)
+
+        // Binary/Document Files
         '*.xml',
         '*.less',
         '*.pdf',

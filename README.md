@@ -65,6 +65,10 @@ This middleware invoke **RemoveComments::class** filter before executation.
 
 > **Note**: Do not register the "RemoveComments::class" filter with it. Because it will be called automatically by "CollapseWhitespace::class"
 
+> **Important**: Whitespace is automatically **preserved** inside `<pre>`, `<code>`, and `<textarea>` tags to maintain proper formatting for code blocks and user input fields. This makes it safe to use on blogs, documentation sites, and technical content. (Issue [#170](https://github.com/vinkius-labs/laravel-page-speed/issues/170))
+
+> **✅ Livewire & Filament Compatible**: Fully compatible with [Laravel Livewire](https://laravel-livewire.com/) and [Filament](https://filamentphp.com/). The middleware preserves the necessary spacing between HTML tags to ensure `wire:*` directives and Alpine.js `x-*` attributes work correctly. (Issue [#165](https://github.com/vinkius-labs/laravel-page-speed/issues/165))
+
 #### Before
 
 ![Before of Laravel Page Speed][link-before]
@@ -130,6 +134,14 @@ You would probably like to configure the package to skip some routes.
 
 //You can use * as wildcard.
 'skip' => [
+    // Development/Debug Tools (automatically skipped by default)
+    '_debugbar/*',      // Laravel Debugbar
+    'horizon/*',        // Laravel Horizon  
+    '_ignition/*',      // Laravel Ignition (error pages)
+    'telescope/*',      // Laravel Telescope
+    'clockwork/*',      // Clockwork
+    
+    // Binary/Document Files
     '*.pdf', //Ignore all routes with final .pdf
     '*/downloads/*',//Ignore all routes that contain 'downloads'
     'assets/*', // Ignore all routes with the 'assets' prefix
@@ -139,6 +151,19 @@ You would probably like to configure the package to skip some routes.
 By default this field comes configured with some options, so feel free to configure according to your needs...
 
 > *Notice*: This package skip automatically 'binary' and 'streamed' responses. See [File Downloads][link-file-download].
+
+> **✅ Development Tools Compatible**: Development and debugging tools like **Laravel Debugbar**, **Horizon**, **Telescope**, **Ignition**, and **Clockwork** are automatically skipped by default, ensuring they work correctly without interference from HTML minification. (Issue [#164](https://github.com/vinkius-labs/laravel-page-speed/issues/164))
+
+> **⚠️ Important for Custom Routes**: If you've customized the routes for debug tools in your application (e.g., Horizon at `/admin/horizon` instead of `/horizon`), you MUST update the skip patterns in your config file to match your custom routes. For example:
+> ```php
+> 'skip' => [
+>     'admin/horizon/*',      // Custom Horizon route
+>     'debug/telescope/*',    // Custom Telescope route
+>     '_debugbar/*',          // Debugbar (usually fixed)
+>     // ... other routes
+> ],
+> ```
+> See your `HorizonServiceProvider`, `TelescopeServiceProvider`, or other debug tool configurations for custom path settings.
 
 ## Testing
 

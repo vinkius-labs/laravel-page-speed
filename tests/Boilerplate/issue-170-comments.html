@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Issue #170 - JavaScript Comment Problem</title>
+</head>
+<body>
+    <h1>Testing JavaScript Comments After Statements</h1>
+    
+    <script>
+        // Test Case 1: Comment after console.log without semicolon
+        console.log('foo'); // undefined
+        var foo = 'bar';
+        console.log(foo); // bar
+        
+        // Test Case 2: Multiple statements with comments
+        var x = 10; // initialize x
+        var y = 20; // initialize y
+        var z = x + y; // sum
+        console.log(z); // should print 30
+        
+        // Test Case 3: Comment after statement without semicolon
+        var name = 'John' // no semicolon here
+        console.log(name) // should print John
+        
+        // Test Case 4: Comment after function call without semicolon
+        alert('test') // show alert
+        console.log('after alert') // this should work
+        
+        // Test Case 5: If statement with comment
+        if (true) { // condition
+            console.log('inside if'); // log
+        } // end if
+        
+        // Test Case 6: Comment with URLs (should preserve http://)
+        var url = "http://example.com"; // website URL
+        var secure = "https://example.com"; // secure URL
+        
+        // Test Case 7: Return statement
+        function test() {
+            return 42; // answer
+        }
+        
+        // Test Case 8: Array with comment
+        var arr = [1, 2, 3]; // numbers
+        var first = arr[0]; // get first
+    </script>
+    
+    <p>Check console for results</p>
+</body>
+</html>
