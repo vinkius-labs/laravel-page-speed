@@ -1,28 +1,36 @@
-# Contributing
+# Contributing to Laravel Page Speed
 
-Contributions are **welcome** and will be fully **credited**.
+Thank you for considering contributing to Laravel Page Speed! We welcome contributions via Pull Requests on [GitHub](https://github.com/vinkius-labs/laravel-page-speed).
 
-We accept contributions via Pull Requests on [Github](https://github.com/vinkius-labs/laravel-page-speed).
+## 📋 Quick Guidelines
 
+- **Follow PSR-2** - Check code style with `composer check-style` and fix with `composer fix-style`
+- **Add tests** - Your patch won't be accepted without tests
+- **Update documentation** - Keep README.md and relevant docs up-to-date
+- **Follow SemVer** - We follow [Semantic Versioning](http://semver.org/)
+- **Use feature branches** - Branch from `develop`, not `master`
+- **One PR per feature** - Keep changes focused
+- **Clean commit history** - Use meaningful commit messages
 
-## Pull Requests
+## 🔄 Development Workflow
 
-- **[PSR-2 Coding Standard](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md)** - Check the code style with ``$ composer check-style`` and fix it with ``$ composer fix-style``.
+We follow **Git Flow**. Please read [GIT_FLOW.md](GIT_FLOW.md) for detailed workflow.
 
-- **Add tests!** - Your patch won't be accepted if it doesn't have tests.
+### Quick Start
 
-- **Document any change in behaviour** - Make sure the `README.md` and any other relevant documentation are kept up-to-date.
+1. Fork the repository
+2. Create feature branch from `develop`:
+   ```bash
+   git checkout develop
+   git checkout -b feature/my-feature
+   ```
+3. Make changes and add tests
+4. Ensure tests pass: `composer test`
+5. Check code style: `composer check-style`
+6. Commit with conventional commits format
+7. Push and create PR targeting `develop`
 
-- **Consider our release cycle** - We try to follow [SemVer v2.0.0](http://semver.org/). Randomly breaking public APIs is not an option.
-
-- **Create feature branches** - Don't ask us to pull from your master branch.
-
-- **One pull request per feature** - If you want to do more than one thing, send multiple pull requests.
-
-- **Send coherent history** - Make sure each individual commit in your pull request is meaningful. If you had to make multiple intermediate commits while developing, please [squash them](http://www.git-scm.com/book/en/v2/Git-Tools-Rewriting-History#Changing-Multiple-Commit-Messages) before submitting.
-
-
-## Running Tests
+## 🧪 Running Tests
 
 ``` bash
 $ composer test
