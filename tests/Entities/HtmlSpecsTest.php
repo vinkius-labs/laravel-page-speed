@@ -7,8 +7,7 @@ use RenatoMarinho\LaravelPageSpeed\Entities\HtmlSpecs;
 
 class HtmlSpecsTest extends TestCase
 {
-    /** @test */
-    public function it_returns_void_elements()
+    public function test_it_returns_void_elements(): void
     {
         $voidElements = HtmlSpecs::voidElements();
 
@@ -16,8 +15,7 @@ class HtmlSpecsTest extends TestCase
         $this->assertNotEmpty($voidElements);
     }
 
-    /** @test */
-    public function it_contains_common_void_elements()
+    public function test_it_contains_common_void_elements(): void
     {
         $voidElements = HtmlSpecs::voidElements();
 
@@ -28,8 +26,7 @@ class HtmlSpecsTest extends TestCase
         }
     }
 
-    /** @test */
-    public function it_contains_all_html5_void_elements()
+    public function test_it_contains_all_html5_void_elements(): void
     {
         $voidElements = HtmlSpecs::voidElements();
 
@@ -57,8 +54,7 @@ class HtmlSpecsTest extends TestCase
         }
     }
 
-    /** @test */
-    public function void_elements_are_lowercase()
+    public function test_void_elements_are_lowercase(): void
     {
         $voidElements = HtmlSpecs::voidElements();
 

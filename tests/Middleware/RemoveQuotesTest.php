@@ -21,7 +21,7 @@ class RemoveQuotesTest extends TestCase
         $this->middleware = new RemoveQuotes();
     }
 
-    public function testRemoveQuotes()
+    public function test_remove_quotes(): void
     {
         $this->assertStringContainsString('<link rel="apple-touch-icon" href="icon.png">', $this->response->getContent());
         $this->assertStringContainsString('<meta charset=utf-8>', $this->response->getContent());
@@ -33,7 +33,7 @@ class RemoveQuotesTest extends TestCase
         $this->assertStringContainsString('<input type=text name="name with spaces" value="name with spaces" width=100%>', $this->response->getContent());
     }
 
-    public function testWontRemoveTrailingSlashesOfNonVoidElements()
+    public function test_wont_remove_trailing_slashes_of_non_void_elements(): void
     {
         $this->assertStringContainsString('<path d="M 80 80 A 45 45, 0, 0, 0, 125 125 L 125 80 Z" fill="green"/>', $this->response->getContent());
         $this->assertStringContainsString('<path d="M 230 80 A 45 45, 0, 1, 0, 275 125 L 275 80 Z" fill="red"/>', $this->response->getContent());

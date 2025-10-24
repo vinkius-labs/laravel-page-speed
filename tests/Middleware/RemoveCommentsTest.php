@@ -21,7 +21,7 @@ class RemoveCommentsTest extends TestCase
         $this->middleware = new RemoveComments();
     }
 
-    public function testRemoveHtmlComments()
+    public function test_remove_html_comments(): void
     {
         $this->assertStringNotContainsString(
             "<!-- Place favicon.ico in the root directory -->",
@@ -76,7 +76,7 @@ class RemoveCommentsTest extends TestCase
         );
     }
 
-    public function testRemoveCssComments()
+    public function test_remove_css_comments(): void
     {
         $this->assertStringNotContainsString(
             "/* before - css inline comment*/color: black;/* after - css inline comment*/",
@@ -99,7 +99,7 @@ class RemoveCommentsTest extends TestCase
         );
     }
 
-    public function testRemoveJsComments()
+    public function test_remove_js_comments(): void
     {
         $this->assertStringNotContainsString(
             "// Single Line Comment",

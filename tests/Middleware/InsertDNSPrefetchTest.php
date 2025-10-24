@@ -12,7 +12,7 @@ class InsertDNSPrefetchTest extends TestCase
         $this->middleware = new InsertDNSPrefetch();
     }
 
-    public function testInsertDNSPrefetch()
+    public function test_insert_dns_prefetch(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 

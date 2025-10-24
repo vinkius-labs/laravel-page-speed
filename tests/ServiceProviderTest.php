@@ -11,36 +11,31 @@ class ServiceProviderTest extends TestCase
         // No middleware needed for this test
     }
 
-    /** @test */
-    public function it_registers_the_service_provider()
+    public function test_it_registers_the_service_provider(): void
     {
         $providers = $this->app->getLoadedProviders();
 
         $this->assertArrayHasKey(ServiceProvider::class, $providers);
     }
 
-    /** @test */
-    public function it_merges_config_on_register()
+    public function test_it_merges_config_on_register(): void
     {
         $this->assertNotNull(config('laravel-page-speed'));
         $this->assertIsArray(config('laravel-page-speed'));
     }
 
-    /** @test */
-    public function it_has_enable_config()
+    public function test_it_has_enable_config(): void
     {
         $this->assertArrayHasKey('enable', config('laravel-page-speed'));
     }
 
-    /** @test */
-    public function it_has_skip_config()
+    public function test_it_has_skip_config(): void
     {
         $this->assertArrayHasKey('skip', config('laravel-page-speed'));
         $this->assertIsArray(config('laravel-page-speed.skip'));
     }
 
-    /** @test */
-    public function it_provides_publishable_config()
+    public function test_it_provides_publishable_config(): void
     {
         $provider = new ServiceProvider($this->app);
 

@@ -12,7 +12,7 @@ class InlineCssTest extends TestCase
         $this->middleware = new InlineCss();
     }
 
-    public function testApply()
+    public function test_apply(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 

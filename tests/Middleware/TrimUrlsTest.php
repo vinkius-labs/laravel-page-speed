@@ -12,7 +12,7 @@ class TrimUrlsTest extends TestCase
         $this->middleware = new TrimUrls();
     }
 
-    public function testTrimUrls()
+    public function test_trim_urls(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 

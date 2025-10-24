@@ -36,7 +36,7 @@ class ShouldNotProcessResponseTest extends TestCase
      *
      * @return void
      */
-    public function testSkipBinaryFileResponse()
+    public function test_skip_binary_file_response(): void
     {
         $request = Request::create('/', 'GET', [], [], ['file' => new UploadedFile(__FILE__, 'foo.php')]);
 
@@ -50,7 +50,7 @@ class ShouldNotProcessResponseTest extends TestCase
      *
      * @return void
      */
-    public function testSkipStreamedResponse()
+    public function test_skip_streamed_response(): void
     {
         $request = Request::create('/', 'GET');
 
@@ -65,7 +65,7 @@ class ShouldNotProcessResponseTest extends TestCase
      *
      * @return void
      */
-    public function testExpectLogicExceptionInBinaryFileResponse()
+    public function test_expect_logic_exception_in_binary_file_response(): void
     {
         $this->expectException('LogicException');
 
@@ -82,7 +82,7 @@ class ShouldNotProcessResponseTest extends TestCase
      *
      * @return void
      */
-    public function testExpectLogicExceptionInStreamedResponse()
+    public function test_expect_logic_exception_in_streamed_response(): void
     {
         $this->expectException('LogicException');
 
@@ -135,12 +135,12 @@ class ShouldNotProcessResponseTest extends TestCase
     protected function mockMiddlewareWhichAllowsPageSpeedProcess()
     {
         $mock = m::mock(CollapseWhitespace::class)
-                 ->shouldAllowMockingProtectedMethods()
-                 ->makePartial();
+            ->shouldAllowMockingProtectedMethods()
+            ->makePartial();
 
         $mock->shouldReceive('shouldProcessPageSpeed')
-             ->once()
-             ->andReturn(true);
+            ->once()
+            ->andReturn(true);
 
         return $mock;
     }

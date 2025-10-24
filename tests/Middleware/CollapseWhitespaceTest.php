@@ -21,7 +21,7 @@ class CollapseWhitespaceTest extends TestCase
         $this->middleware = new CollapseWhitespace();
     }
 
-    public function testRemoveCommentsBeforeRunningCollapseWhiteSpace()
+    public function test_remove_comments_before_running_collapse_whitespace(): void
     {
         $this->assertStringNotContainsString(
             "/* before - inline comment*/console.log('Speed!');// after - inline comment",
@@ -29,7 +29,7 @@ class CollapseWhitespaceTest extends TestCase
         );
     }
 
-    public function testCollapseWhitespace()
+    public function test_collapse_whitespace(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 

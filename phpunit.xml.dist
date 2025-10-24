@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit backupGlobals="false"
-         backupStaticAttributes="false"
-         beStrictAboutTestsThatDoNotTestAnything="false"
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         backupGlobals="false"
          bootstrap="vendor/autoload.php"
          colors="true"
-         convertErrorsToExceptions="true"
-         convertNoticesToExceptions="true"
-         convertWarningsToExceptions="true"
          processIsolation="false"
-         stopOnError="false"
          stopOnFailure="false"
-         verbose="true"
->
+         executionOrder="random"
+         beStrictAboutOutputDuringTests="true">
     <testsuites>
         <testsuite name="Laravel Page Speed Test Suite">
-            <directory suffix="Test.php">./tests</directory>
+            <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
+    <source>
+        <include>
             <directory suffix=".php">src</directory>
-        </whitelist>
-    </filter>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="base64:2fl3UtcWC66FVXoS8qvwvEogzwk5qPqxZ1h5rJNqx8I="/>
+    </php>
 </phpunit>

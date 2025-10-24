@@ -25,7 +25,7 @@ class ConfigTest extends TestCase
         $this->middleware = new TrimUrls();
     }
 
-    public function testDisableFlag()
+    public function test_disable_flag(): void
     {
         $middleware = $this->mockMiddlewareWithEnableFalse();
         $response = $middleware->handle($this->request, $this->getNext());
@@ -36,7 +36,7 @@ class ConfigTest extends TestCase
     }
 
 
-    public function testEnableIsNull()
+    public function test_enable_is_null(): void
     {
         $middleware = $this->mockMiddlewareWithEnableNull();
         $response = $middleware->handle($this->request, $this->getNext());
@@ -46,7 +46,7 @@ class ConfigTest extends TestCase
         $this->assertStringContainsString("//code.jquery.com/jquery-3.2.1.min.js", $response->getContent());
     }
 
-    public function testSkipRoute()
+    public function test_skip_route(): void
     {
         config(['laravel-page-speed.skip' => ['*/downloads/*', '*/downloads2/*']]);
 
@@ -57,7 +57,7 @@ class ConfigTest extends TestCase
         $this->assertEquals($this->html, $response->getContent());
     }
 
-    public function testNotSkipRoute()
+    public function test_not_skip_route(): void
     {
         config(['laravel-page-speed.skip' => ['*/downloads/*', '*/downloads2/*']]);
 
@@ -68,7 +68,7 @@ class ConfigTest extends TestCase
         $this->assertNotEquals($this->html, $response->getContent());
     }
 
-    public function testSkipRouteWithFileExtension()
+    public function test_skip_route_with_file_extension(): void
     {
         config(['laravel-page-speed.skip' => ['*.pdf', '*.csv']]);
 
@@ -79,7 +79,7 @@ class ConfigTest extends TestCase
         $this->assertEquals($this->html, $response->getContent());
     }
 
-    public function testNotSkipRouteWithFileExtension()
+    public function test_not_skip_route_with_file_extension(): void
     {
         config(['laravel-page-speed.skip' => ['*.pdf', '*.csv']]);
 
@@ -90,11 +90,11 @@ class ConfigTest extends TestCase
         $this->assertNotEquals($this->html, $response->getContent());
     }
 
-    public function testWontReadEnableConfigMoreThanOnce()
+    public function test_wont_read_enable_config_more_than_once(): void
     {
         $pageSpeed = m::mock(TrimUrls::class)
-                        ->shouldAllowMockingProtectedMethods()
-                        ->makePartial();
+            ->shouldAllowMockingProtectedMethods()
+            ->makePartial();
 
         config(['laravel-page-speed.enable' => false]);
 
@@ -104,12 +104,12 @@ class ConfigTest extends TestCase
     protected function mockMiddlewareWithEnableNull()
     {
         $mock = m::mock(TrimUrls::class)
-                 ->shouldAllowMockingProtectedMethods()
-                 ->makePartial();
+            ->shouldAllowMockingProtectedMethods()
+            ->makePartial();
 
         $mock->shouldReceive('isEnable')
-             ->once()
-             ->andReturnNull();
+            ->once()
+            ->andReturnNull();
 
         return $mock;
     }
@@ -117,12 +117,12 @@ class ConfigTest extends TestCase
     protected function mockMiddlewareWithEnableFalse()
     {
         $mock = m::mock(TrimUrls::class)
-                 ->shouldAllowMockingProtectedMethods()
-                 ->makePartial();
+            ->shouldAllowMockingProtectedMethods()
+            ->makePartial();
 
         $mock->shouldReceive('isEnable')
-             ->once()
-             ->andReturnFalse();
+            ->once()
+            ->andReturnFalse();
 
         return $mock;
     }

@@ -7,7 +7,7 @@ use RenatoMarinho\LaravelPageSpeed\Test\TestCase;
 
 class DeferJavascriptTest extends TestCase
 {
-    public function testDeferJavascript()
+    public function test_defer_javascript(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 

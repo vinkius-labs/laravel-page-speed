@@ -12,7 +12,7 @@ class ElideAttributesTest extends TestCase
         $this->middleware = new ElideAttributes();
     }
 
-    public function testElideAttributes()
+    public function test_elide_attributes(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 
@@ -23,7 +23,7 @@ class ElideAttributesTest extends TestCase
         $this->assertStringContainsString('<form class="form" style="display:block;border:1px solid red;">', $response->getContent());
     }
 
-    public function testSupport_NGDisabled()
+    public function test_support_ng_disabled(): void
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 
