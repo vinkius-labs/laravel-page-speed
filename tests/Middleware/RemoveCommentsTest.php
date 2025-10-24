@@ -125,5 +125,15 @@ class RemoveCommentsTest extends TestCase
         $this->assertStringContainsString("console.log('Laravel');", $this->response->getContent());
         $this->assertStringContainsString("console.log('Page');", $this->response->getContent());
         $this->assertStringContainsString("console.log('Speed!');", $this->response->getContent());
+        
+        // Test that comments after strings are properly removed
+        $this->assertStringNotContainsString("// This comment should be removed", $this->response->getContent());
+        $this->assertStringNotContainsString("// This comment should also be removed", $this->response->getContent());
+        $this->assertStringNotContainsString("// Don't break this", $this->response->getContent());
+        
+        // Ensure the actual code is still there
+        $this->assertStringContainsString('var url = "http://example.com";', $this->response->getContent());
+        $this->assertStringContainsString('var text = "Some text";', $this->response->getContent());
+        $this->assertStringContainsString("console.log('Important code');", $this->response->getContent());
     }
 }

@@ -15,7 +15,7 @@ jobs:
         name: Validate PR
         runs-on: ubuntu-latest
         if: github.event.pull_request.draft == false
-        
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -83,16 +83,16 @@ jobs:
                       } catch (e) {
                           console.log('Could not read coverage');
                       }
-                      
+
                       const body = `## 🔍 Pull Request Validation Results
-                      
+
                       - ✅ **Code Style**: PSR-2 compliant
                       - ✅ **Tests**: All passing
                       - 📊 **Coverage**: ${coverage}
                       - 🚀 **Ready to merge**
-                      
+
                       *Automated validation by GitHub Actions*`;
-                      
+
                       github.rest.issues.createComment({
                           issue_number: context.issue.number,
                           owner: context.repo.owner,

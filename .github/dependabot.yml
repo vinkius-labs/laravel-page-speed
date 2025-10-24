@@ -17,7 +17,7 @@ updates:
       include: "scope"
     versioning-strategy: increase
     target-branch: "develop"
-    
+
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
