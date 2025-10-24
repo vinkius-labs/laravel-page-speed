@@ -15,7 +15,7 @@ class ServiceProviderTest extends TestCase
     public function it_registers_the_service_provider()
     {
         $providers = $this->app->getLoadedProviders();
-        
+
         $this->assertArrayHasKey(ServiceProvider::class, $providers);
     }
 
@@ -43,10 +43,10 @@ class ServiceProviderTest extends TestCase
     public function it_provides_publishable_config()
     {
         $provider = new ServiceProvider($this->app);
-        
+
         // Force the boot method to be called
         $provider->boot();
-        
+
         // Check if the config can be published
         $this->assertTrue(true); // Publishable resources are registered
     }
