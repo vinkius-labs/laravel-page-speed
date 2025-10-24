@@ -69,11 +69,11 @@ class InlineCss extends PageSpeed
         $tmp = explode('<', $this->html);
 
         $replaceClass = [
-            '/class="(.*?)"/' => "",
+            '/(?<![-:])class="(.*?)"/i' => "",
         ];
 
         foreach ($tmp as $value) {
-            preg_match_all('/class="(.*?)"/', $value, $matches);
+            preg_match_all('/(?<![-:])class="(.*?)"/i', $value, $matches);
 
             if (count($matches[1]) > 1) {
                 $replace = [

@@ -2,6 +2,24 @@
 
 All notable changes to `laravel-page-speed` will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- 🐛 **InlineCss Middleware**: Fixed regex pattern to prevent matching framework-specific class attributes (Issues #75, #133, #154)
+  - Changed from `/class="(.*?)"/` to `/(?<![-:])class="(.*?)"/i` using negative lookbehind
+  - Now correctly ignores `ng-class` (AngularJS), `:class` (Alpine.js), `v-bind:class` (Vue.js)
+  - Horizon dashboard now works correctly with InlineCss (Issue #133)
+  - AngularJS applications with `ng-class` work correctly (Issue #75)
+  - Alpine.js `:class` shorthand works correctly (Issue #154)
+  - Vue.js `v-bind:class` works correctly
+
+### Added
+- ✅ New test suite `InlineCssJavaScriptFrameworksTest` with 7 comprehensive tests (42 assertions)
+- ✅ Tests for AngularJS `ng-class` compatibility
+- ✅ Tests for Alpine.js `:class` shorthand compatibility
+- ✅ Tests for Vue.js `v-bind:class` compatibility
+- ✅ Tests for mixed framework scenarios
+
 ## [3.0.0] - 2025-01-24
 
 ### ⚠️ BREAKING CHANGES
