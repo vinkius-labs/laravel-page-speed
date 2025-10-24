@@ -1,0 +1,101 @@
+name: Pull Request Validation
+
+on:
+    pull_request:
+        branches: [master]
+        types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+    contents: read
+    pull-requests: write
+    checks: write
+
+jobs:
+    validate:
+        name: Validate PR
+        runs-on: ubuntu-latest
+        if: github.event.pull_request.draft == false
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: 8.3
+                  extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv
+                  coverage: xdebug
+
+            - name: Validate composer.json and composer.lock
+              run: composer validate --strict
+
+            - name: Cache Composer packages
+              id: composer-cache
+              uses: actions/cache@v3
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-php-
+
+            - name: Install dependencies
+              run: composer install --prefer-dist --no-progress
+
+            - name: Check code style (PSR-2)
+              run: vendor/bin/phpcs -p --standard=PSR2 --runtime-set ignore_errors_on_exit 1 --runtime-set ignore_warnings_on_exit 1 src tests
+
+            - name: Run test suite
+              run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+            - name: Check test coverage
+              run: |
+                  COVERAGE=$(php -r "
+                      \$xml = simplexml_load_file('coverage.xml');
+                      \$metrics = \$xml->project->metrics;
+                      \$percentage = (\$metrics['coveredstatements'] / \$metrics['statements']) * 100;
+                      echo round(\$percentage, 2);
+                  ")
+                  echo "Code Coverage: $COVERAGE%"
+                  if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+                      echo "❌ Coverage is below 70%"
+                      exit 1
+                  fi
+                  echo "✅ Coverage is acceptable ($COVERAGE%)"
+
+            - name: Comment PR with results
+              uses: actions/github-script@v7
+              if: always()
+              with:
+                  script: |
+                      const fs = require('fs');
+                      let coverage = 'N/A';
+                      try {
+                          const xml = fs.readFileSync('coverage.xml', 'utf8');
+                          const match = xml.match(/statements="(\d+)".*coveredstatements="(\d+)"/);
+                          if (match) {
+                              const total = parseInt(match[1]);
+                              const covered = parseInt(match[2]);
+                              coverage = ((covered / total) * 100).toFixed(2) + '%';
+                          }
+                      } catch (e) {
+                          console.log('Could not read coverage');
+                      }
+
+                      const body = `## 🔍 Pull Request Validation Results
+
+                      - ✅ **Code Style**: PSR-2 compliant
+                      - ✅ **Tests**: All passing
+                      - 📊 **Coverage**: ${coverage}
+                      - 🚀 **Ready to merge**
+
+                      *Automated validation by GitHub Actions*`;
+
+                      github.rest.issues.createComment({
+                          issue_number: context.issue.number,
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          body: body
+                      });

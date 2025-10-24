@@ -1,0 +1,47 @@
+name: Code Quality
+
+on:
+    push:
+        branches: [master, develop]
+    pull_request:
+        branches: [master, develop]
+
+permissions:
+    contents: read
+    pull-requests: write
+
+jobs:
+    quality:
+        name: Code Quality Analysis
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: 8.3
+                  extensions: dom, curl, libxml, mbstring, zip
+                  tools: phpstan, psalm
+
+            - name: Install dependencies
+              run: composer install --prefer-dist --no-progress
+
+            - name: Check for security vulnerabilities
+              run: composer audit || true
+
+            - name: Check coding standards
+              run: vendor/bin/phpcs --report=summary --standard=PSR2 src tests || true
+
+            - name: Generate code quality report
+              run: |
+                  echo "## 📊 Code Quality Report" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "### Code Style (PSR-2)" >> $GITHUB_STEP_SUMMARY
+                  vendor/bin/phpcs --report=summary --standard=PSR2 src tests >> $GITHUB_STEP_SUMMARY || true
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "### Files Analyzed" >> $GITHUB_STEP_SUMMARY
+                  echo "- Source files: $(find src -name '*.php' | wc -l)" >> $GITHUB_STEP_SUMMARY
+                  echo "- Test files: $(find tests -name '*.php' | wc -l)" >> $GITHUB_STEP_SUMMARY
