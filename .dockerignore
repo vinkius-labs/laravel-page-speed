@@ -1,0 +1,12 @@
+vendor/
+node_modules/
+.git/
+.gitignore
+.gitattributes
+.env
+.env.backup
+.phpunit.result.cache
+composer.lock
+*.log
+.DS_Store
+Thumbs.db

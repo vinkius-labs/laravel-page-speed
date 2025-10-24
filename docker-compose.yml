@@ -1,0 +1,20 @@
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-page-speed-app
+    volumes:
+      - .:/var/www/html
+      - ./vendor:/var/www/html/vendor
+    working_dir: /var/www/html
+    networks:
+      - laravel-page-speed-network
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
+
+networks:
+  laravel-page-speed-network:
+    driver: bridge
