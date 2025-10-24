@@ -32,36 +32,36 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $removeComments = new RemoveComments();
         $collapseWhitespace = new CollapseWhitespace();
-        
+
         // Apply both middlewares
-        $afterRemoveComments = $removeComments->handle($request, function() use ($response) {
+        $afterRemoveComments = $removeComments->handle($request, function () use ($response) {
             return $response;
         });
-        
-        $final = $collapseWhitespace->handle($request, function() use ($afterRemoveComments) {
+
+        $final = $collapseWhitespace->handle($request, function () use ($afterRemoveComments) {
             return $afterRemoveComments;
         });
-        
+
         $content = $final->getContent();
-        
+
         // The code should still be present and not commented out
         $this->assertStringContainsString('var x = 1;', $content);
         $this->assertStringContainsString('var y = 2;', $content);
         $this->assertStringContainsString('console.log(x + y);', $content);
-        
+
         // Comments should be removed
         $this->assertStringNotContainsString('// First comment', $content);
         $this->assertStringNotContainsString('// Second comment', $content);
-        
+
         // Make sure the second and third lines are not commented out
         // This would happen if the comment wasn't removed and newlines were collapsed
         $this->assertStringNotContainsString('// First comment var y = 2;', $content);
         $this->assertStringNotContainsString('// Second comment console.log', $content);
     }
-    
+
     /**
      * Test edge case: comment after string with quote
      */
@@ -82,29 +82,29 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // All code should be present
         $this->assertStringContainsString('var url = "http://example.com";', $content);
         $this->assertStringContainsString("var name = 'John';", $content);
         $this->assertStringContainsString('doSomething();', $content);
-        
+
         // Comments should be removed
         $this->assertStringNotContainsString('// URL comment', $content);
         $this->assertStringNotContainsString('// Name comment', $content);
-        
+
         // Ensure nothing is accidentally commented out
         $this->assertStringNotContainsString('// URL comment var name', $content);
         $this->assertStringNotContainsString('// Name comment doSomething', $content);
     }
-    
+
     /**
      * Test that URLs with // are not affected
      */
@@ -125,15 +125,15 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // URLs should be preserved
         $this->assertStringContainsString('http://example.com', $content);
         $this->assertStringContainsString('https://test.com', $content);

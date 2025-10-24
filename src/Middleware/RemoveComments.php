@@ -11,7 +11,7 @@ class RemoveComments extends PageSpeed
     {
         // First, remove multi-line comments (/* ... */)
         $buffer = $this->replaceInsideHtmlTags(['script', 'style'], self::REGEX_MATCH_MULTILINE_COMMENTS, '', $buffer);
-        
+
         // Then, remove single-line comments (//) more carefully
         $buffer = $this->removeSingleLineComments($buffer);
 
@@ -21,7 +21,7 @@ class RemoveComments extends PageSpeed
 
         return $this->replace($replaceHtmlRules, $buffer);
     }
-    
+
     /**
      * Remove single-line comments (//) from script tags while preserving them inside strings
      * 
@@ -34,10 +34,10 @@ class RemoveComments extends PageSpeed
             $tagAfterReplace = $this->removeCommentsFromTag($tagMatched);
             $buffer = str_replace($tagMatched, $tagAfterReplace, $buffer);
         }
-        
+
         return $buffer;
     }
-    
+
     /**
      * Remove // comments from a script/style tag content
      * 
@@ -53,18 +53,18 @@ class RemoveComments extends PageSpeed
         } elseif (strpos($tag, "\r") !== false) {
             $lineEnding = "\r";
         }
-        
+
         // Split by lines to process each line
         $lines = preg_split('/\r\n|\r|\n/', $tag);
         $processedLines = [];
-        
+
         foreach ($lines as $line) {
             $processedLines[] = $this->removeSingleLineCommentFromLine($line);
         }
-        
+
         return implode($lineEnding, $processedLines);
     }
-    
+
     /**
      * Remove // comment from a single line while preserving // inside strings
      * 
@@ -79,38 +79,38 @@ class RemoveComments extends PageSpeed
         $inDoubleQuote = false;
         $inRegex = false;
         $escaped = false;
-        
+
         for ($i = 0; $i < $length; $i++) {
             $char = $line[$i];
             $nextChar = $i + 1 < $length ? $line[$i + 1] : '';
             $prevChar = $i > 0 ? $line[$i - 1] : '';
-            
+
             // Handle escape sequences
             if ($escaped) {
                 $result .= $char;
                 $escaped = false;
                 continue;
             }
-            
+
             if ($char === '\\' && ($inSingleQuote || $inDoubleQuote || $inRegex)) {
                 $result .= $char;
                 $escaped = true;
                 continue;
             }
-            
+
             // Toggle quote states
             if ($char === '"' && !$inSingleQuote && !$inRegex) {
                 $inDoubleQuote = !$inDoubleQuote;
                 $result .= $char;
                 continue;
             }
-            
+
             if ($char === "'" && !$inDoubleQuote && !$inRegex) {
                 $inSingleQuote = !$inSingleQuote;
                 $result .= $char;
                 continue;
             }
-            
+
             // Handle regex literals (basic detection)
             if ($char === '/' && !$inSingleQuote && !$inDoubleQuote) {
                 // Check if this might be a regex literal
@@ -123,7 +123,7 @@ class RemoveComments extends PageSpeed
                         continue;
                     }
                 }
-                
+
                 // End of regex literal
                 if ($inRegex) {
                     $inRegex = false;
@@ -131,7 +131,7 @@ class RemoveComments extends PageSpeed
                     continue;
                 }
             }
-            
+
             // Check for // comment outside of strings
             if (!$inSingleQuote && !$inDoubleQuote && !$inRegex && $char === '/' && $nextChar === '/') {
                 // Check if this is not part of a URL (preceded by :)
@@ -140,10 +140,10 @@ class RemoveComments extends PageSpeed
                     break;
                 }
             }
-            
+
             $result .= $char;
         }
-        
+
         return $result;
     }
 }

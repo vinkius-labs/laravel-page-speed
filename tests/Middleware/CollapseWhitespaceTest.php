@@ -43,13 +43,13 @@ class CollapseWhitespaceTest extends TestCase
             $this->response->getContent()
         );
     }
-    
+
     public function test_javascript_not_broken_by_comment_removal_and_whitespace_collapse(): void
     {
         // This test ensures that when comments are removed and whitespace is collapsed,
         // the JavaScript code remains functional and nothing is accidentally commented out
         $content = $this->response->getContent();
-        
+
         // Ensure all expected JavaScript statements are present
         $this->assertStringContainsString("console.log('Laravel');", $content);
         $this->assertStringContainsString("console.log('Page');", $content);
@@ -57,7 +57,7 @@ class CollapseWhitespaceTest extends TestCase
         $this->assertStringContainsString('var url = "http://example.com";', $content);
         $this->assertStringContainsString('var text = "Some text";', $content);
         $this->assertStringContainsString("console.log('Important code');", $content);
-        
+
         // Ensure comments are removed
         $this->assertStringNotContainsString("// This comment should be removed", $content);
         $this->assertStringNotContainsString("// This comment should also be removed", $content);
