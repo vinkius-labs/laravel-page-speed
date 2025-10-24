@@ -37,11 +37,11 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         // ng-class attributes must be preserved exactly
         $this->assertStringContainsString('ng-class="{active: isActive, disabled: isDisabled}"', $result);
         $this->assertStringContainsString('ng-class="dynamicClass"', $result);
-        
+
         // Should have style tag with converted inline styles
         $this->assertStringContainsString('<style>', $result);
         $this->assertStringContainsString('page_speed_', $result);
-        
+
         // Inline styles should be converted to classes
         $this->assertStringNotContainsString('style="padding: 10px;"', $result);
         $this->assertStringNotContainsString('style="font-weight: bold;"', $result);
@@ -71,12 +71,12 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         // Alpine.js :class must be preserved
         $this->assertStringContainsString(':class="{ \'bg-blue\': open, \'bg-gray\': !open }"', $result);
         $this->assertStringContainsString(':class="open ? \'visible\' : \'hidden\'"', $result);
-        
+
         // Inline styles should be converted to classes
         $this->assertStringNotContainsString('style="padding: 5px;"', $result);
         $this->assertStringNotContainsString('style="margin: 10px;"', $result);
         $this->assertStringNotContainsString('style="color: red;"', $result);
-        
+
         // Should have page_speed classes
         $this->assertStringContainsString('page_speed_', $result);
     }
@@ -107,7 +107,7 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         $this->assertStringContainsString('v-bind:class="{ active: isActive, \'text-danger\': hasError }"', $result);
         $this->assertStringContainsString('v-bind:class="classObject"', $result);
         $this->assertStringContainsString('v-bind:class="[activeClass, errorClass]"', $result);
-        
+
         // Inline styles should be converted
         $this->assertStringNotContainsString('style="padding: 20px;"', $result);
         $this->assertStringNotContainsString('style="font-size: 14px;"', $result);
@@ -144,13 +144,13 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         $this->assertStringContainsString('ng-class="{expanded: isExpanded}"', $result);
         $this->assertStringContainsString('v-bind:class="vueClasses"', $result);
         $this->assertStringContainsString(':class="alpineClasses"', $result);
-        
+
         // Inline styles should be converted to page_speed classes
         $this->assertStringNotContainsString('style="border: 1px solid;"', $result);
         $this->assertStringNotContainsString('style="padding: 10px;"', $result);
         $this->assertStringNotContainsString('style="margin: 5px;"', $result);
         $this->assertStringNotContainsString('style="display: flex;"', $result);
-        
+
         // Should have style tag with converted classes
         $this->assertStringContainsString('<style>', $result);
     }
@@ -179,7 +179,7 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         $this->assertStringNotContainsString('style="width: 100%;"', $result);
         $this->assertStringNotContainsString('style="font-weight: bold;"', $result);
         $this->assertStringNotContainsString('style="color: yellow;"', $result);
-        
+
         // Should have page_speed classes instead
         $this->assertStringContainsString('class="page_speed_', $result);
     }
@@ -204,7 +204,7 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
 
         // Attribute ending with "class" should not be affected
         $this->assertStringContainsString('data-css-class="some-value"', $result);
-        
+
         // Inline style should be converted
         $this->assertStringNotContainsString('style="background: blue;"', $result);
     }
@@ -246,13 +246,13 @@ class InlineCssJavaScriptFrameworksTest extends TestCase
         $this->assertStringContainsString(':class="open ? \'show\' : \'hide\'"', $result);
         $this->assertStringContainsString('v-bind:class="contentClasses"', $result);
         $this->assertStringContainsString('ng-class="{loading: isLoading}"', $result);
-        
+
         // Inline styles should be converted
         $this->assertStringNotContainsString('style="background: white;"', $result);
         $this->assertStringNotContainsString('style="padding: 10px;"', $result);
         $this->assertStringNotContainsString('style="border: 1px solid;"', $result);
         $this->assertStringNotContainsString('style="font-size: 24px;"', $result);
-        
+
         // Should have style tag
         $this->assertStringContainsString('<style>', $result);
     }

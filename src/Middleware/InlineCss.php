@@ -22,7 +22,7 @@ class InlineCss extends PageSpeed
 
         $this->class = collect($matches[1])->mapWithKeys(function ($item) {
 
-            return [ 'page_speed_'.rand() => $item[0] ];
+            return ['page_speed_' . rand() => $item[0]];
         })->unique();
 
         return $this->injectStyle()->injectClass()->fixHTML()->html;
@@ -36,7 +36,8 @@ class InlineCss extends PageSpeed
 
             $this->style[] = [
                 'class' => $class,
-                'attributes' => preg_quote($attributes, '/')];
+                'attributes' => preg_quote($attributes, '/')
+            ];
         });
 
         $injectStyle = implode(' ', $this->inline);
@@ -54,7 +55,7 @@ class InlineCss extends PageSpeed
     {
         collect($this->style)->each(function ($item) {
             $replace = [
-                '/style="'.$item['attributes'].'"/' => "class=\"{$item['class']}\"",
+                '/style="' . $item['attributes'] . '"/' => "class=\"{$item['class']}\"",
             ];
 
             $this->html = $this->replace($replace, $this->html);
@@ -77,7 +78,7 @@ class InlineCss extends PageSpeed
 
             if (count($matches[1]) > 1) {
                 $replace = [
-                    '/>/' => "class=\"".implode(' ', $matches[1])."\">",
+                    '/>/' => "class=\"" . implode(' ', $matches[1]) . "\">",
                 ];
 
                 $newHTML[] = str_replace(
