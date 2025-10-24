@@ -1,12 +1,12 @@
 <p align="center">
-    <img width="400" src="https://raw.githubusercontent.com/renatomarinho/laravel-page-speed/master/art/logo.png" alt="Laravel Page Speed logo" />
+    <img width="400" src="https://raw.githubusercontent.com/vinkius-labs/laravel-page-speed/master/art/logo.png" alt="Laravel Page Speed logo" />
 </p>
 
 <p align="center">
-<a href="https://travis-ci.org/renatomarinho/laravel-page-speed"><img src="https://travis-ci.org/renatomarinho/laravel-page-speed.svg?branch=master" alt="Build Status"></a>
-<a href="https://packagist.org/packages/renatomarinho/laravel-page-speed"><img src="https://poser.pugx.org/renatomarinho/laravel-page-speed/version" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/renatomarinho/laravel-page-speed"><img src="https://poser.pugx.org/renatomarinho/laravel-page-speed/downloads" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/renatomarinho/laravel-page-speed"><img src="https://poser.pugx.org/renatomarinho/laravel-page-speed/license" alt="License"></a>
+<a href="https://travis-ci.org/vinkius-labs/laravel-page-speed"><img src="https://travis-ci.org/vinkius-labs/laravel-page-speed.svg?branch=master" alt="Build Status"></a>
+<a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://poser.pugx.org/vinkius-labs/laravel-page-speed/version" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://poser.pugx.org/vinkius-labs/laravel-page-speed/downloads" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://poser.pugx.org/vinkius-labs/laravel-page-speed/license" alt="License"></a>
 </p>
 
 # Laravel Page Speed
@@ -22,43 +22,43 @@ Simple package to minify HTML output on demand which results in a 35%+ optimizat
 You can install the package via composer:
 
 ```sh
-composer require renatomarinho/laravel-page-speed
+composer require vinkius-labs/laravel-page-speed
 ```
 
 This package supports Laravel [Package Discovery][link-package-discovery].
 
 ### Publish configuration file
 
- `php artisan vendor:publish --provider="RenatoMarinho\LaravelPageSpeed\ServiceProvider"`
+ `php artisan vendor:publish --provider="VinkiusLabs\LaravelPageSpeed\ServiceProvider"`
 
 ## Do not forget to register middlewares
 
-Next, the `\RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace::class` and other middleware must be registered in the kernel, for example:
+Next, the `\VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class` and other middleware must be registered in the kernel, for example:
 
 ```php
 //app/Http/Kernel.php
 
 protected $middleware = [
     ...
-    \RenatoMarinho\LaravelPageSpeed\Middleware\InlineCss::class,
-    \RenatoMarinho\LaravelPageSpeed\Middleware\ElideAttributes::class,
-    \RenatoMarinho\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
-    \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveComments::class,
-    //\RenatoMarinho\LaravelPageSpeed\Middleware\TrimUrls::class, 
-    //\RenatoMarinho\LaravelPageSpeed\Middleware\RemoveQuotes::class,
-    \RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace::class, // Note: This middleware invokes "RemoveComments::class" before it runs.
-    \RenatoMarinho\LaravelPageSpeed\Middleware\DeferJavascript::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\ElideAttributes::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\RemoveComments::class,
+    //\VinkiusLabs\LaravelPageSpeed\Middleware\TrimUrls::class, 
+    //\VinkiusLabs\LaravelPageSpeed\Middleware\RemoveQuotes::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class, // Note: This middleware invokes "RemoveComments::class" before it runs.
+    \VinkiusLabs\LaravelPageSpeed\Middleware\DeferJavascript::class,
 ]
 ```
 
 ## Middlewares Details
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveComments::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\RemoveComments::class
 
 The **RemoveComments::class** filter eliminates HTML, JS and CSS comments.
 The filter reduces the transfer size of HTML files by removing the comments. Depending on the HTML file, this filter can significantly reduce the number of bytes transmitted on the network.
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class
 
 The **CollapseWhitespace::class** filter reduces bytes transmitted in an HTML file by removing unnecessary whitespace.
 This middleware invoke **RemoveComments::class** filter before executation.
@@ -73,33 +73,33 @@ This middleware invoke **RemoveComments::class** filter before executation.
 
 ![After of Laravel Page Speed][link-after]
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveQuotes::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\RemoveQuotes::class
 
 The **RemoveQuotes::class** filter eliminates unnecessary quotation marks from HTML attributes. While required by the various HTML specifications, browsers permit their omission when the value of an attribute is composed of a certain subset of characters (alphanumerics and some punctuation characters).
 
 Quote removal produces a modest savings in byte count on most pages.
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\ElideAttributes::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\ElideAttributes::class
 
 The **ElideAttributes::class** filter reduces the transfer size of HTML files by removing attributes from tags when the specified value is equal to the default value for that attribute. This can save a modest number of bytes, and may make the document more compressible by canonicalizing the affected tags.
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class
 
 The **InsertDNSPrefetch::class** filter Injects <link rel="dns-prefetch" href="//www.example.com"> tags in the HEAD to enable the browser to do DNS prefetching.
 
 DNS resolution time varies from <1ms for locally cached results, to hundreds of milliseconds due to the cascading nature of DNS. This can contribute significantly towards total page load time. This filter reduces DNS lookup time by providing hints to the browser at the beginning of the HTML, which allows the browser to pre-resolve DNS for resources on the page.
 
- ### ⚠️ \RenatoMarinho\LaravelPageSpeed\Middleware\TrimUrls::class,
+ ### ⚠️ \VinkiusLabs\LaravelPageSpeed\Middleware\TrimUrls::class,
 
 The **TrimUrls::class** filter trims URLs by resolving them by making them relative to the base URL for the page.
 
 > **Warning**: **TrimUrls::class** is considered **medium risk**. It can cause problems if it uses the wrong base URL. This can happen, for example, if you serve HTML that will be pasted verbatim into other HTML pages. If URLs are trimmed on the first page, they will be incorrect for the page they are inserted into. In this case, just disable the middleware.
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\InlineCss::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss::class
 
 The **InlineCss::class** filter transforms the inline "style" attribute of tags into classes by moving the CSS to the header.
 
-### \RenatoMarinho\LaravelPageSpeed\Middleware\DeferJavascript::class
+### \VinkiusLabs\LaravelPageSpeed\Middleware\DeferJavascript::class
 
 Defers the execution of javascript in the HTML.
 

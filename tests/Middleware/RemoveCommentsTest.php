@@ -1,9 +1,9 @@
 <?php
 
-namespace RenatoMarinho\LaravelPageSpeed\Test\Middleware;
+namespace VinkiusLabs\LaravelPageSpeed\Test\Middleware;
 
-use RenatoMarinho\LaravelPageSpeed\Middleware\RemoveComments;
-use RenatoMarinho\LaravelPageSpeed\Test\TestCase;
+use VinkiusLabs\LaravelPageSpeed\Middleware\RemoveComments;
+use VinkiusLabs\LaravelPageSpeed\Test\TestCase;
 
 class RemoveCommentsTest extends TestCase
 {

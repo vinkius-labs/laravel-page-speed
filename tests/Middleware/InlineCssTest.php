@@ -1,9 +1,9 @@
 <?php
 
-namespace RenatoMarinho\LaravelPageSpeed\Test\Middleware;
+namespace VinkiusLabs\LaravelPageSpeed\Test\Middleware;
 
-use RenatoMarinho\LaravelPageSpeed\Middleware\InlineCss;
-use RenatoMarinho\LaravelPageSpeed\Test\TestCase;
+use VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss;
+use VinkiusLabs\LaravelPageSpeed\Test\TestCase;
 
 class InlineCssTest extends TestCase
 {

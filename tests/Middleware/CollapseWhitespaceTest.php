@@ -1,9 +1,9 @@
 <?php
 
-namespace RenatoMarinho\LaravelPageSpeed\Test\Middleware;
+namespace VinkiusLabs\LaravelPageSpeed\Test\Middleware;
 
-use RenatoMarinho\LaravelPageSpeed\Test\TestCase;
-use RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace;
+use VinkiusLabs\LaravelPageSpeed\Test\TestCase;
+use VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace;
 
 class CollapseWhitespaceTest extends TestCase
 {

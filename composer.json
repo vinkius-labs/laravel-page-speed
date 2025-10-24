@@ -1,5 +1,5 @@
 {
-    "name": "renatomarinho/laravel-page-speed",
+    "name": "vinkius-labs/laravel-page-speed",
     "description": "Laravel Page Speed",
     "keywords": [
         "laravel",
@@ -27,12 +27,12 @@
     },
     "autoload": {
         "psr-4": {
-            "RenatoMarinho\\LaravelPageSpeed\\": "src/"
+            "VinkiusLabs\\LaravelPageSpeed\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "RenatoMarinho\\LaravelPageSpeed\\Test\\": "tests"
+            "VinkiusLabs\\LaravelPageSpeed\\Test\\": "tests"
         }
     },
     "scripts": {
@@ -45,7 +45,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "RenatoMarinho\\LaravelPageSpeed\\ServiceProvider"
+                "VinkiusLabs\\LaravelPageSpeed\\ServiceProvider"
             ]
         }
     }

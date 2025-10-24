@@ -2,7 +2,7 @@
 
 Contributions are **welcome** and will be fully **credited**.
 
-We accept contributions via Pull Requests on [Github](https://github.com/renatomarinho/laravel-page-speed).
+We accept contributions via Pull Requests on [Github](https://github.com/vinkius-labs/laravel-page-speed).
 
 
 ## Pull Requests

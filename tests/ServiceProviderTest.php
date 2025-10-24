@@ -1,8 +1,8 @@
 <?php
 
-namespace RenatoMarinho\LaravelPageSpeed\Test;
+namespace VinkiusLabs\LaravelPageSpeed\Test;
 
-use RenatoMarinho\LaravelPageSpeed\ServiceProvider;
+use VinkiusLabs\LaravelPageSpeed\ServiceProvider;
 
 class ServiceProviderTest extends TestCase
 {
