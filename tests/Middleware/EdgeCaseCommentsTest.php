@@ -31,28 +31,28 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // All code should be present
         $this->assertStringContainsString('var a = 1;', $content);
         $this->assertStringContainsString('var b = 2;', $content);
         $this->assertStringContainsString('var c = 3;', $content);
         $this->assertStringContainsString('var d = 4;', $content);
         $this->assertStringContainsString('doSomething();', $content);
-        
+
         // Comments should be removed
         $this->assertStringNotContainsString('// Comment without space', $content);
         $this->assertStringNotContainsString('// Comment with space', $content);
         $this->assertStringNotContainsString('// Comment with multiple spaces', $content);
         $this->assertStringNotContainsString('// Comment with tab', $content);
     }
-    
+
     /**
      * Test comment after closing quote or parenthesis
      */
@@ -77,14 +77,14 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // All code should be executable
         $this->assertStringContainsString('func();', $content);
         $this->assertStringContainsString('var x = getValue();', $content);
@@ -93,11 +93,11 @@ HTML;
         $this->assertStringContainsString('var arr = [1, 2];', $content);
         $this->assertStringContainsString('var obj = {a: 1};', $content);
         $this->assertStringContainsString('next();', $content);
-        
+
         // No comments should remain
         $this->assertStringNotContainsString('// After', $content);
     }
-    
+
     /**
      * Test that // inside strings is not treated as comment
      */
@@ -120,21 +120,21 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // Content inside strings should be preserved
         $this->assertStringContainsString('http://', $content);
         $this->assertStringContainsString('https://example.com/path', $content);
         $this->assertStringContainsString('This is not a // comment', $content);
         $this->assertStringContainsString('doSomething();', $content);
     }
-    
+
     /**
      * Test regex pattern with slashes
      */
@@ -156,14 +156,14 @@ HTML;
 
         $request = Request::create('/test', 'GET');
         $response = new Response($html);
-        
+
         $collapseWhitespace = new CollapseWhitespace();
-        $final = $collapseWhitespace->handle($request, function() use ($response) {
+        $final = $collapseWhitespace->handle($request, function () use ($response) {
             return $response;
         });
-        
+
         $content = $final->getContent();
-        
+
         // Regex patterns should be preserved
         $this->assertStringContainsString('/test\/pattern/', $content);
         $this->assertStringContainsString('/http:\/\//', $content);

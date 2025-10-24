@@ -49,7 +49,16 @@ abstract class PageSpeed
      */
     protected function replace(array $replace, $buffer)
     {
-        return preg_replace(array_keys($replace), array_values($replace), $buffer);
+        $result = preg_replace(array_keys($replace), array_values($replace), $buffer);
+
+        // Check for PCRE errors (e.g., backtrack limit, recursion limit exceeded)
+        if ($result === null && preg_last_error() !== PREG_NO_ERROR) {
+            // Log the error or handle it appropriately
+            // For now, return the original buffer to prevent blank pages
+            return $buffer;
+        }
+
+        return $result;
     }
 
     /**
