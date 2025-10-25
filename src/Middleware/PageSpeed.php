@@ -6,6 +6,7 @@ use Closure;
 use VinkiusLabs\LaravelPageSpeed\Entities\HtmlSpecs;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Illuminate\Support\Facades\Log;
 
 abstract class PageSpeed
 {
@@ -22,6 +23,8 @@ abstract class PageSpeed
     /**
      * Handle an incoming request.
      *
+     * Performance: Added optional metrics tracking for debugging
+     *
      * @param  \Illuminate\Http\Request $request
      * @param  \Closure $next
      * @return \Illuminate\Http\Response $response
@@ -35,9 +38,49 @@ abstract class PageSpeed
         }
 
         $html = $response->getContent();
+        $originalSize = strlen($html);
+
+        // Track performance metrics if in debug mode
+        $startTime = config('app.debug') ? microtime(true) : null;
+
         $newContent = $this->apply($html);
 
+        // Log performance metrics in debug mode
+        if ($startTime !== null) {
+            $this->logPerformanceMetrics(
+                $startTime,
+                $originalSize,
+                strlen($newContent)
+            );
+        }
+
         return $response->setContent($newContent);
+    }
+
+    /**
+     * Log performance metrics for debugging
+     *
+     * @param float $startTime Start time in microseconds
+     * @param int $originalSize Original buffer size in bytes
+     * @param int $finalSize Final buffer size in bytes
+     * @return void
+     */
+    protected function logPerformanceMetrics($startTime, $originalSize, $finalSize)
+    {
+        $processTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
+        $reduction = $originalSize > 0 ? round((1 - $finalSize / $originalSize) * 100, 2) : 0;
+        $middlewareName = class_basename(static::class);
+
+        // Only log if processing took significant time or achieved significant reduction
+        if ($processTime > 1 || abs($reduction) > 1) {
+            Log::debug("PageSpeed [{$middlewareName}]", [
+                'time_ms' => round($processTime, 2),
+                'original_kb' => round($originalSize / 1024, 2),
+                'final_kb' => round($finalSize / 1024, 2),
+                'reduction' => "{$reduction}%",
+                'bytes_saved' => $originalSize - $finalSize,
+            ]);
+        }
     }
 
     /**
@@ -144,6 +187,9 @@ abstract class PageSpeed
     /**
      * Replace occurrences of regex pattern inside of given HTML tags
      *
+     * Performance: Optimized to use preg_replace_callback for single-pass processing
+     * instead of multiple str_replace operations on the entire buffer
+     *
      * @param array  $tags    Html tags to match and run regex to replace occurrences
      * @param string $regex   Regex rule to match on the given HTML tags
      * @param string $replace Content to replace
@@ -153,11 +199,36 @@ abstract class PageSpeed
      */
     protected function replaceInsideHtmlTags(array $tags, string $regex, string $replace, string $buffer): string
     {
-        foreach ($this->matchAllHtmlTag($tags, $buffer) as $tagMatched) {
-            preg_match_all($regex, $tagMatched, $contentsMatched);
+        // Early return if no tags to process
+        if (empty($tags)) {
+            return $buffer;
+        }
 
-            $tagAfterReplace = str_replace($contentsMatched[0], $replace, $tagMatched);
-            $buffer = str_replace($tagMatched, $tagAfterReplace, $buffer);
+        // Build pattern for matching the tags
+        $voidTags = array_intersect($tags, HtmlSpecs::voidElements());
+        $normalTags = array_diff($tags, $voidTags);
+
+        $patterns = [];
+
+        // Pattern for void tags
+        if (!empty($voidTags)) {
+            $voidPattern = '/\<\s*(' . implode('|', $voidTags) . ')[^>]*\>/i';
+            $patterns[] = $voidPattern;
+        }
+
+        // Pattern for normal tags
+        if (!empty($normalTags)) {
+            $normalPattern = '/\<\s*(' . implode('|', $normalTags) . ')[^>]*\>((.|\n)*?)\<\s*\/\s*\1\>/i';
+            $patterns[] = $normalPattern;
+        }
+
+        // Performance: Use preg_replace_callback for single-pass processing
+        // This is much faster than iterating and doing multiple str_replace on the entire buffer
+        foreach ($patterns as $pattern) {
+            $buffer = preg_replace_callback($pattern, function ($matches) use ($regex, $replace) {
+                // Apply the regex replacement only within this tag
+                return preg_replace($regex, $replace, $matches[0]);
+            }, $buffer);
         }
 
         return $buffer;

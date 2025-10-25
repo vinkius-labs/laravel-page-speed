@@ -8,9 +8,26 @@ class InlineCss extends PageSpeed
     private $class = [];
     private $style = [];
     private $inline = [];
+    private static $uniqueCounter = 0;
 
+    /**
+     * Apply inline CSS optimization
+     * 
+     * Performance improvements:
+     * - Replaced rand() with counter-based unique IDs (faster)
+     * - Eliminated explode('<', $html) that creates large arrays
+     * - Uses preg_replace_callback for single-pass processing
+     * 
+     * @param string $buffer
+     * @return string
+     */
     public function apply($buffer)
     {
+        // Early return when no inline style attributes are present
+        if (stripos($buffer, 'style="') === false) {
+            return $buffer;
+        }
+
         $this->html = $buffer;
 
         preg_match_all(
@@ -20,9 +37,9 @@ class InlineCss extends PageSpeed
             PREG_OFFSET_CAPTURE
         );
 
+        // Performance: Use counter instead of rand() - much faster
         $this->class = collect($matches[1])->mapWithKeys(function ($item) {
-
-            return ['page_speed_' . rand() => $item[0]];
+            return ['page_speed_' . (++self::$uniqueCounter) => $item[0]];
         })->unique();
 
         return $this->injectStyle()->injectClass()->fixHTML()->html;
@@ -64,34 +81,42 @@ class InlineCss extends PageSpeed
         return $this;
     }
 
+    /**
+     * Fix HTML by consolidating multiple class attributes
+     * 
+     * Performance: Optimized to use preg_replace_callback instead of explode/loop
+     */
     private function fixHTML()
     {
-        $newHTML = [];
-        $tmp = explode('<', $this->html);
+        // Performance: Use preg_replace_callback instead of explode('<') + loop
+        // This avoids creating a large array from exploding HTML
+        $this->html = preg_replace_callback(
+            '/<([^>]+)>/s',
+            function ($matches) {
+                $tagContent = $matches[1];
 
-        $replaceClass = [
-            '/(?<![-:])class="(.*?)"/i' => "",
-        ];
+                // Check if this tag has multiple class attributes
+                preg_match_all('/(?<![-:])class="(.*?)"/i', $tagContent, $classMatches);
 
-        foreach ($tmp as $value) {
-            preg_match_all('/(?<![-:])class="(.*?)"/i', $value, $matches);
+                if (count($classMatches[1]) > 1) {
+                    // Multiple class attributes found - consolidate them
+                    $allClasses = implode(' ', $classMatches[1]);
 
-            if (count($matches[1]) > 1) {
-                $replace = [
-                    '/>/' => "class=\"" . implode(' ', $matches[1]) . "\">",
-                ];
+                    // Remove all existing class attributes
+                    $tagContent = preg_replace('/(?<![-:])class="(.*?)"/i', '', $tagContent);
 
-                $newHTML[] = str_replace(
-                    '  ',
-                    ' ',
-                    $this->replace($replace, $this->replace($replaceClass, $value))
-                );
-            } else {
-                $newHTML[] = $value;
-            }
-        }
+                    // Add single consolidated class attribute at the end
+                    // Remove extra spaces
+                    $tagContent = preg_replace('/\s+/', ' ', $tagContent);
+                    $tagContent = trim($tagContent);
 
-        $this->html = implode('<', $newHTML);
+                    return "<{$tagContent} class=\"{$allClasses}\">";
+                }
+
+                return $matches[0];
+            },
+            $this->html
+        );
 
         return $this;
     }
