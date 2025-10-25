@@ -51,5 +51,19 @@ abstract class TestCase extends Orchestra
     {
         config(['laravel-page-speed.enable' => true]);
         config(['laravel-page-speed.skip' => []]);
+        
+        // Configure database for testing (especially for prefer-lowest scenarios)
+        $app['config']->set('database.default', 'testing');
+        $app['config']->set('database.connections.testing', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+        ]);
+        
+        // Configure cache for testing
+        $app['config']->set('cache.default', 'array');
+        
+        // Configure queue for testing
+        $app['config']->set('queue.default', 'sync');
     }
 }
