@@ -23,6 +23,11 @@ class CollapseWhitespace extends PageSpeed
      */
     public function apply($buffer)
     {
+        // Early return if no HTML tags found
+        if (stripos($buffer, '<html') === false && stripos($buffer, '<!DOCTYPE') === false) {
+            return $buffer;
+        }
+
         // First remove comments
         $buffer = $this->removeComments($buffer);
 
