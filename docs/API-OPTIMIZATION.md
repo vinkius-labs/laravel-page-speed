@@ -1,386 +1,227 @@
-# 🚀 Laravel Page Speed - API Optimization Features
+# API Optimization Playbook (REST / JSON)
 
-Laravel Page Speed now includes **powerful API optimization middlewares** that enhance performance, security, and observability **without modifying your response data**.
-
-## ✨ Why These Features Are Incredible for APIs
-
-All these middlewares follow a **golden rule**: **They NEVER modify your API response data**. They only:
-- ✅ Compress data for transport (transparent to clients)
-- ✅ Add performance/security headers
-- ✅ Optimize caching and bandwidth
-- ✅ Provide observability metrics
-
-Your API contracts remain **100% intact** and **backward compatible**.
+Deep-dive into the middleware stack that hardens, accelerates, and instruments Laravel APIs while keeping response bodies untouched.
 
 ---
 
-## 📦 Available API Middlewares
+## Table of Contents
 
-### 1. **ApiResponseCompression** 🗜️
-
-Automatically compresses API responses using Brotli or Gzip.
-
-**Benefits:**
-- Reduces bandwidth usage by 60-80%
-- Faster response times
-- Lower hosting costs
-- Transparent to clients (browsers auto-decompress)
-
-**Example:**
-```php
-// app/Http/Kernel.php
-protected $middleware = [
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
-];
-```
-
-**Configuration:**
-```php
-// config/laravel-page-speed.php
-'api' => [
-    'min_compression_size' => 1024, // Only compress responses > 1KB
-    'show_compression_metrics' => true, // Add X-Compression-Savings header
-    'skip_error_compression' => false, // Compress error responses too
-],
-```
-
-**Response Headers Added:**
-```
-Content-Encoding: br (or gzip)
-Vary: Accept-Encoding
-X-Original-Size: 15234 (if metrics enabled)
-X-Compressed-Size: 3421 (if metrics enabled)
-X-Compression-Savings: 77.54% (if metrics enabled)
-```
-
-**Real-World Impact:**
-- 15KB JSON response → 3KB compressed (77% smaller)
-- 100KB response → 15KB compressed (85% smaller)
+- [1. Design Goals](#1-design-goals)
+- [2. Stack Overview](#2-stack-overview)
+- [3. Installation and Wiring](#3-installation-and-wiring)
+- [4. Middleware Deep Dive](#4-middleware-deep-dive)
+- [5. Observability and Telemetry](#5-observability-and-telemetry)
+- [6. Integration Patterns](#6-integration-patterns)
+- [7. Testing Strategy](#7-testing-strategy)
+- [8. Failure Scenarios and Mitigations](#8-failure-scenarios-and-mitigations)
 
 ---
 
-### 2. **ApiPerformanceHeaders** 📊
+## 1. Design Goals
 
-Adds performance metrics to response headers for monitoring and optimization.
+The API pipeline is built around four principles:
 
-**Benefits:**
-- Identify slow endpoints instantly
-- Track database query performance
-- Monitor memory usage
-- Trace requests across logs
-
-**Example:**
-```php
-protected $middleware = [
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
-];
-```
-
-**Configuration:**
-```php
-'api' => [
-    'track_queries' => true, // Track DB queries
-    'query_threshold' => 20, // Warn if > 20 queries
-    'slow_request_threshold' => 1000, // Warn if > 1 second
-],
-```
-
-**Response Headers Added:**
-```
-X-Response-Time: 234.56ms
-X-Memory-Usage: 2.34 MB
-X-Query-Count: 8
-X-Request-ID: 20251024142530-a3f9c2d1
-X-Performance-Warning: High query count detected (if threshold exceeded)
-```
-
-**Use Cases:**
-- **APM Integration**: Send metrics to DataDog, New Relic, etc.
-- **Debugging**: Trace slow requests with Request-ID
-- **Optimization**: Identify N+1 query problems
+1. **Transport-only optimizations** – payloads are compressed, cached, or wrapped in headers without mutating JSON structures.
+2. **Deterministic behaviour** – middleware order produces repeatable responses in multi-node clusters and under retries.
+3. **First-class observability** – latency, request identifiers, and cache status surface through HTTP headers compatible with APMs.
+4. **Security by default** – hardened response headers enforce modern browser and client behaviour.
 
 ---
 
-### 3. **ApiETag** ⚡
+## 2. Stack Overview
 
-Implements smart caching with ETags and 304 Not Modified responses.
+| Middleware                    | Category        | Primary Capability                               | Default Status |
+|------------------------------|-----------------|---------------------------------------------------|----------------|
+| `ApiSecurityHeaders`         | Hardening       | Applies CSP, HSTS, referrer, and permissions headers | Enabled        |
+| `ApiResponseCache`           | Caching         | Serves GET requests from cache and invalidates on mutations | Disabled       |
+| `ApiETag`                    | Validation      | Issues strong/weak ETags and honours conditional requests | Enabled        |
+| `ApiResponseCompression`     | Transport       | Negotiates Brotli/Gzip compression with thresholds | Enabled        |
+| `ApiPerformanceHeaders`      | Telemetry       | Emits timing, memory, query, and correlation headers | Enabled        |
+| `ApiCircuitBreaker`          | Resilience      | Applies rolling failure window and fallback status code | Optional       |
+| `ApiHealthCheck`             | Diagnostics     | Exposes `/health` probe with subsystem metrics       | Optional       |
 
-**Benefits:**
-- Saves bandwidth (returns empty 304 instead of full response)
-- Reduces server load
-- Faster API responses for unchanged data
-- Works with CDNs and proxies
-
-**Example:**
-```php
-protected $middleware = [
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
-];
-```
-
-**Configuration:**
-```php
-'api' => [
-    'etag_algorithm' => 'md5', // md5, sha1, or sha256
-    'etag_max_age' => 300, // Cache for 5 minutes
-],
-```
-
-**How It Works:**
-
-**First Request:**
-```
-GET /api/users/123
-Response: 200 OK
-ETag: "5d41402abc4b2a76b9719d911017c592"
-Cache-Control: private, max-age=300, must-revalidate
-Body: {"id": 123, "name": "John"}
-```
-
-**Second Request (data unchanged):**
-```
-GET /api/users/123
-If-None-Match: "5d41402abc4b2a76b9719d911017c592"
-Response: 304 Not Modified
-Body: (empty - saves bandwidth!)
-```
-
-**Real-World Impact:**
-- Unchanged data: **0 bytes transferred** (vs full response)
-- Server CPU: **minimal** (just hash comparison)
-- Client: Uses cached data automatically
+The recommended order inside the `api` group places hardening first, then caching/meta validators, followed by compression and finally telemetry.
 
 ---
 
-### 4. **ApiSecurityHeaders** 🔒
+## 3. Installation and Wiring
 
-Adds security headers to protect your API.
+1. Require and publish assets:
 
-**Benefits:**
-- Prevents common attacks (XSS, clickjacking, etc.)
-- HTTPS enforcement with HSTS
-- Compliance with security best practices
-- Better security scores
+   ```bash
+   composer require vinkius-labs/laravel-page-speed
+   php artisan vendor:publish --provider="VinkiusLabs\\LaravelPageSpeed\\ServiceProvider"
+   ```
 
-**Example:**
-```php
-protected $middleware = [
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
-];
-```
+2. Wire the stack using the configuration style for your Laravel version:
 
-**Configuration:**
-```php
-'api' => [
-    'referrer_policy' => 'strict-origin-when-cross-origin',
-    'hsts_max_age' => 31536000, // 1 year
-    'hsts_include_subdomains' => false,
-    'content_security_policy' => "default-src 'none'; frame-ancestors 'none'",
-    'permissions_policy' => 'geolocation=(), microphone=(), camera=()',
-],
-```
+   **Laravel 10.x – `app/Http/Kernel.php`**
 
-**Headers Added:**
-```
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Strict-Transport-Security: max-age=31536000 (HTTPS only)
-Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
-Permissions-Policy: geolocation=(), microphone=(), camera=()
-```
+   ```php
+   protected $middlewareGroups = [
+       'api' => [
+           // Core Laravel middleware …
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCache::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiCircuitBreaker::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ApiHealthCheck::class,
+       ],
+   ];
+   ```
 
-**Protection Against:**
-- ✅ MIME sniffing attacks
-- ✅ Clickjacking
-- ✅ XSS vulnerabilities
-- ✅ Downgrade attacks (HTTP → HTTPS)
+   **Laravel 11.x / 12.x – `bootstrap/app.php`**
 
----
+   Extend the same `->withMiddleware` closure used for the web stack:
 
-## 🎯 Recommended Setup
+   ```php
+   $middleware->appendToGroup('api', [
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCache::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiCircuitBreaker::class,
+       \VinkiusLabs\LaravelPageSpeed\Middleware\ApiHealthCheck::class,
+   ]);
+   ```
 
-### For REST APIs:
-```php
-// app/Http/Kernel.php
-protected $middleware = [
-    // ... your existing middleware
-    
-    // API Optimization Stack
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
-];
-```
+3. Toggle features via `config/laravel-page-speed.php` or environment variables (see `docs/CONFIGURATION.md`). Example `.env` block:
 
-### For High-Traffic APIs:
-```php
-// Apply only to API routes
-protected $middlewareGroups = [
-    'api' => [
-        // ... default API middleware
-        \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
-        \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
-        \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
-    ],
-];
-```
-
-### For Monitoring/Debugging:
-```php
-// Only in development/staging
-if (! app()->isProduction()) {
-    $middleware[] = \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class;
-}
-```
+   ```env
+   API_CACHE_ENABLED=true
+   API_CACHE_DRIVER=redis
+   API_CACHE_TTL=300
+   API_CACHE_DYNAMIC_TAGS=true
+   API_MIN_COMPRESSION_SIZE=1024
+   API_SHOW_COMPRESSION_METRICS=false
+   API_TRACK_QUERIES=true
+   API_QUERY_THRESHOLD=20
+   API_SLOW_REQUEST_THRESHOLD=1000
+   API_ETAG_ALGORITHM=md5
+   API_ETAG_MAX_AGE=300
+   ```
 
 ---
 
-## 📈 Real-World Performance Gains
+## 4. Middleware Deep Dive
 
-### Before Laravel Page Speed API Middlewares:
-```
-GET /api/products
-Response Size: 245 KB
-Response Time: 450ms
-Database Queries: 35 (N+1 problem!)
-Cache: No
-Security Headers: None
-```
+### 4.1 ApiSecurityHeaders
+- Adds `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, and `Permissions-Policy`.
+- All directives are configurable; defaults align with OWASP ASVS Level 2.
+- Combine with Laravel's rate limiting and auth middleware for holistic protection.
 
-### After Laravel Page Speed API Middlewares:
-```
-GET /api/products
-Response Size: 45 KB (82% smaller - compressed)
-Response Time: 420ms
-Database Queries: 35 (visible in headers - now you can fix!)
-Cache: ETag enabled (304 on next request)
-Security Headers: 7 headers added
-Performance Metrics: Available in headers
+### 4.2 ApiResponseCache
+- Transparent caching for idempotent verbs (`GET`, `HEAD`) with dynamic tagging based on request path and optional user context.
+- Mutation verbs (`POST`, `PUT`, `PATCH`, `DELETE`) evict matching cache entries using tag indexes—see `docs/API-CACHE.md` for a full walkthrough.
+- Supports per-user segregation via `per_user` and `cache_authenticated` flags.
 
-Second Request (cached):
-Response Size: 0 bytes (304 Not Modified)
-Response Time: 15ms (just ETag check)
-```
+### 4.3 ApiETag
+- Generates hashes using the configured algorithm (`md5`, `sha1`, `sha256`).
+- Handles both strong and weak validators; uses `If-None-Match` for conditional GETs and returns `304` without body when the payload is unchanged.
+- Plays well with Response Cache: when cache is hit, ETag is emitted from stored metadata.
 
-**Total Improvement:**
-- 🚀 **Bandwidth**: 82% reduction
-- ⚡ **Speed**: 96% faster on cache hit
-- 🔒 **Security**: 7 protection headers
-- 📊 **Visibility**: Full performance metrics
+### 4.4 ApiResponseCompression
+- Negotiates compression based on `Accept-Encoding`. Prefers Brotli (`br`), falls back to Gzip when unsupported.
+- Respects `min_compression_size` to avoid inflating small payloads.
+- `skip_error_compression` prevents compressing 4xx/5xx bodies when troubleshooting.
+- Optional metrics header: `X-Compression-Ratio`, `X-Original-Size`, and `X-Compressed-Size`.
 
----
+### 4.5 ApiPerformanceHeaders
+- Wraps the request lifecycle in a high-resolution timer.
+- Emits headers:
+  - `X-Response-Time`: milliseconds with two decimal precision.
+  - `X-Memory-Usage`: memory delta.
+  - `X-Query-Count`: total database queries executed (requires `track_queries`).
+  - `X-Request-ID`: generated UUID v4 if not already set upstream.
+  - `X-Performance-Warning`: descriptive message when thresholds are exceeded.
+- Ideal for structured logging and correlation within distributed traces.
 
-## 🔧 Environment Configuration
+### 4.6 ApiCircuitBreaker
+- Maintains a sliding window of failures keyed by URL or route depending on `scope`.
+- On threshold breach, short-circuits subsequent requests for `timeout` seconds and emits configurable fallback response.
+- Emits `X-Circuit-Breaker-State` header (`closed`, `half-open`, `open`).
 
-Add to your `.env` file:
-
-```bash
-# General
-LARAVEL_PAGE_SPEED_ENABLE=true
-
-# Compression
-API_MIN_COMPRESSION_SIZE=1024
-API_SHOW_COMPRESSION_METRICS=false
-API_SKIP_ERROR_COMPRESSION=false
-
-# Performance Tracking
-API_TRACK_QUERIES=false
-API_QUERY_THRESHOLD=20
-API_SLOW_REQUEST_THRESHOLD=1000
-
-# ETag Caching
-API_ETAG_ALGORITHM=md5
-API_ETAG_MAX_AGE=300
-
-# Security
-API_REFERRER_POLICY=strict-origin-when-cross-origin
-API_HSTS_MAX_AGE=31536000
-API_HSTS_INCLUDE_SUBDOMAINS=false
-```
+### 4.7 ApiHealthCheck
+- Exposes a JSON document summarizing database, cache, disk, memory, and queue health.
+- Optional response caching (`cache_results`) reduces probe load; default TTL is 10 seconds.
+- Use with Kubernetes readiness/liveness probes or ALB/Gateway health checks.
 
 ---
 
-## 🧪 Testing
+## 5. Observability and Telemetry
 
-Run the test suite:
+- **Headers**: Performance, cache, and breaker headers are parseable by Datadog, New Relic, Elastic APM, and custom log shippers.
+- **Metrics correlation**: Pair `X-Request-ID` with structured logs (`Log::withContext`) to trace entire request lifecycles.
+- **APM tagging**: Example (Laravel + OpenTelemetry):
 
-```bash
-composer test
+  ```php
+  app('telemetry')->currentSpan()?->setAttribute('http.api.cache_status', $response->headers->get('X-Cache-Status'));
+  app('telemetry')->currentSpan()?->setAttribute('http.api.request_id', $response->headers->get('X-Request-ID'));
+  ```
 
-# Or specific tests
-vendor/bin/phpunit tests/Middleware/ApiResponseCompressionTest.php
-vendor/bin/phpunit tests/Middleware/ApiPerformanceHeadersTest.php
-vendor/bin/phpunit tests/Middleware/ApiETagTest.php
-vendor/bin/phpunit tests/Middleware/ApiSecurityHeadersTest.php
-```
+- **Dashboards**: export CSV of headers via Istio Envoy filters or API Gateway access logs to visualize hit rates and latency distribution.
 
 ---
 
-## 🎨 Integration Examples
+## 6. Integration Patterns
 
-### With Laravel Sanctum (SPA Authentication):
+### 6.1 Sanctum / Session-based APIs
+
 ```php
 'api' => [
     \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
     'throttle:api',
     \Illuminate\Routing\Middleware\SubstituteBindings::class,
-    
-    // Add API optimization
     \VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
+    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCache::class,
     \VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
     \VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
-],
+    \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
+];
 ```
 
-### With API Rate Limiting:
+### 6.2 Rate-limited Public APIs
+
 ```php
-Route::middleware([
-    'throttle:60,1',
-    'api.compression',
-    'api.etag',
-])->group(function () {
-    // Your API routes
+Route::middleware(['throttle:120,1', 'bindings', 'page-speed.api'])->group(function () {
+    Route::get('/v1/products', ProductController::class);
+    Route::post('/v1/products', ProductStoreController::class);
 });
 ```
 
-### With Conditional Middleware:
-```php
-// Only compress large responses
-Route::get('/api/reports/large', function () {
-    return response()->json($largeDataset);
-})->middleware(['api.compression']);
+### 6.3 Conditional Instrumentation
 
-// Only track performance in development
-if (config('app.debug')) {
-    Route::middleware(['api.performance'])->group(function () {
-        // API routes
-    });
+Enable expensive telemetry only outside production:
+
+```php
+if (! app()->environment('production')) {
+    $router->pushMiddlewareToGroup('api', \VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class);
 }
 ```
 
 ---
 
-## 🌟 Why This is Incredible for APIs
+## 7. Testing Strategy
 
-1. **Zero Breaking Changes**: Your API response data is **never modified**
-2. **Plug & Play**: Just add middleware, no code changes needed
-3. **Huge Performance Gains**: 60-85% bandwidth reduction + caching
-4. **Production Ready**: Battle-tested patterns from major APIs
-5. **Observable**: Built-in performance metrics and tracing
-6. **Secure by Default**: Industry-standard security headers
-7. **Framework Integration**: Works seamlessly with Laravel ecosystem
+- **Unit tests**: Validate header presence/values via PHPUnit’s `assertHeader`. Target classes already have coverage under `tests/Middleware`.
+- **Contract tests**: Capture JSON schemas before enabling middleware to ensure payloads remain unmodified.
+- **Load testing**: Run k6 or Locust with/without middleware to measure CPU, memory, and cache hit behaviour.
+- **Chaos drills**: Force cache backend failures or simulate downstream outages to validate circuit breaker fallbacks.
 
 ---
 
-## 📚 Learn More
+## 8. Failure Scenarios and Mitigations
 
-- [Main README](../README.md)
-- [Configuration Guide](../config/laravel-page-speed.php)
-- [Contributing](../CONTRIBUTING.md)
-- [Changelog](../CHANGELOG.md)
+| Scenario                                  | Detection signal                               | Recommended action                                 |
+|-------------------------------------------|------------------------------------------------|---------------------------------------------------|
+| ETag mismatch due to proxy modifications  | Client never receives 304 responses            | Ensure upstream proxies preserve `ETag` headers.   |
+| Cache poisoning by per-user data          | Users receive responses with foreign state     | Enable `per_user` cache segmentation.             |
+| Slow compression on large payloads        | Increased `X-Response-Time` but low CPU idle   | Raise `min_compression_size` or enable Brotli via native extension. |
+| Circuit breaker stuck in open state       | Constant `X-Circuit-Breaker-State: open`       | Increase `timeout` or lower `failure_threshold`.   |
+| Health probe flapping                     | Alternating 200/503 on `/health`               | Enable `cache_results` and review thresholds.      |
 
----
+Maintaining automated tests and observability pipelines for these edge cases ensures the API stack remains predictable even under extreme load.
 

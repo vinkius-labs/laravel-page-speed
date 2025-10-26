@@ -1,403 +1,223 @@
-# 🌐 Web Optimization Guide (HTML/Blade)
+﻿# Web Optimization Playbook (Blade / HTML)
 
-Complete guide for optimizing HTML pages, Blade templates, and web applications using Laravel Page Speed.
+Highly technical guidance for adopting the Laravel Page Speed HTML pipeline without sacrificing rendering integrity or developer ergonomics.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Available Middlewares](#available-middlewares)
-- [Installation & Setup](#installation--setup)
-- [Configuration](#configuration)
-- [Middleware Details](#middleware-details)
-- [Compatibility](#compatibility)
-- [Performance Benchmarks](#performance-benchmarks)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
+- [1. Overview](#1-overview)
+- [2. Pipeline Architecture](#2-pipeline-architecture)
+- [3. Installation and Baseline Setup](#3-installation-and-baseline-setup)
+- [4. Middleware Reference](#4-middleware-reference)
+- [5. Integration Patterns](#5-integration-patterns)
+- [6. Instrumentation and Benchmarking](#6-instrumentation-and-benchmarking)
+- [7. Validation Strategy](#7-validation-strategy)
+- [8. Troubleshooting](#8-troubleshooting)
 
 ---
 
-## Overview
+## 1. Overview
 
-The web optimization features of Laravel Page Speed focus on reducing HTML page size, improving rendering performance, and optimizing resource loading. These middlewares work together to achieve **35%+ reduction** in page size.
+The HTML pipeline targets three objectives:
 
-### Key Benefits
+1. **Reduce transfer size** with deterministic minification operations that retain semantic whitespace.
+2. **Improve time-to-first-render** by deferring non-critical assets and hinting network lookups.
+3. **Maintain compatibility** across reactive ecosystems (Livewire, Alpine.js, Inertia, Filament) via opt-out markers and safe parsing heuristics.
 
-- ✅ **Smaller Page Size** - 35% reduction in HTML bytes
-- ✅ **Faster First Paint** - 33% improvement in rendering time
-- ✅ **Better SEO** - Google PageSpeed Insights scores improve
-- ✅ **Reduced Bandwidth** - Lower hosting costs
-- ✅ **Framework Compatible** - Works with Livewire, Filament, Inertia
+Laboratory benchmarks show a 30–35% reduction in HTML payload and a 33% faster First Paint on representative Blade applications instrumented with Lighthouse.
 
 ---
 
-## Available Middlewares
+## 2. Pipeline Architecture
 
-| Middleware | Purpose | Risk Level | Savings |
-|------------|---------|------------|---------|
-| `CollapseWhitespace` | Remove unnecessary whitespace | ✅ Low | ~25% |
-| `RemoveComments` | Strip HTML/CSS/JS comments | ✅ Low | ~5% |
-| `InlineCss` | Move inline styles to header | ✅ Low | ~3% |
-| `DeferJavascript` | Defer script execution | ✅ Low | Render boost |
-| `ElideAttributes` | Remove default attributes | ✅ Low | ~2% |
-| `InsertDNSPrefetch` | Add DNS prefetch hints | ✅ Low | DNS boost |
-| `RemoveQuotes` | Remove unnecessary quotes | ⚠️ Medium | ~1% |
-| `TrimUrls` | Make URLs relative | ⚠️ Medium | ~1% |
+The HTML optimizer is expressed as a deterministic sequence of PSR-15 style middleware. Each stage operates on the response body with guardrails that prevent double-processing:
 
----
+1. **InlineCss** – hashes recurring inline styles and emits a consolidated `<style>` block in the document head.
+2. **ElideAttributes** – removes HTML attributes whose values match W3C defaults.
+3. **InsertDNSPrefetch** – scans third-party origins and additively injects `<link rel="dns-prefetch">` hints.
+4. **CollapseWhitespace** – orchestrates comment removal, whitespace collapse, and tag compaction.
+5. **DeferJavascript** – appends the `defer` attribute to synchronous `<script>` tags that are safe to postpone.
 
-## Installation & Setup
-
-### Step 1: Install Package
-
-```bash
-composer require vinkius-labs/laravel-page-speed
-```
-
-### Step 2: Publish Configuration
-
-```bash
-php artisan vendor:publish --provider="VinkiusLabs\LaravelPageSpeed\ServiceProvider"
-```
-
-### Step 3: Register Middlewares
-
-Add to `app/Http/Kernel.php`:
-
-```php
-protected $middleware = [
-    // ... existing middleware
-    
-    // Laravel Page Speed (recommended order)
-    \VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\ElideAttributes::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
-    \VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class, // Includes RemoveComments
-    \VinkiusLabs\LaravelPageSpeed\Middleware\DeferJavascript::class,
-];
-```
-
-> **Note**: `CollapseWhitespace` automatically calls `RemoveComments`, so you don't need both.
-
-### Step 4: Configure (Optional)
-
-Edit `config/laravel-page-speed.php`:
-
-```php
-return [
-    'enable' => env('LARAVEL_PAGE_SPEED_ENABLE', true),
-    
-    'skip' => [
-        '_debugbar/*',
-        'telescope/*',
-        'horizon/*',
-        // Add custom routes to skip
-    ],
-];
-```
+The ordering matters: CSS consolidation runs before attribute elision to avoid mangling synthetic class names, and whitespace collapse runs before script deferral to ensure comment removal does not invalidate JS parsing.
 
 ---
 
-## Configuration
+## 3. Installation and Baseline Setup
 
-### Environment Variables
+1. Install and publish assets:
 
-```env
-# Enable/disable globally
-LARAVEL_PAGE_SPEED_ENABLE=true
+   ```bash
+   composer require vinkius-labs/laravel-page-speed
+   php artisan vendor:publish --provider="VinkiusLabs\\LaravelPageSpeed\\ServiceProvider"
+   ```
 
-# Disable in local development for readability
-# In .env.local or .env.development:
-LARAVEL_PAGE_SPEED_ENABLE=false
-```
+2. Register the middleware according to your Laravel major version:
 
-### Skip Routes Configuration
+   **Laravel 10.x – `app/Http/Kernel.php`**
 
-```php
-// config/laravel-page-speed.php
+   ```php
+   protected $middlewareGroups = [
+       'web' => [
+           // existing entries …
+           \VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\ElideAttributes::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class,
+           \VinkiusLabs\LaravelPageSpeed\Middleware\DeferJavascript::class,
+       ],
+   ];
+   ```
 
-'skip' => [
-    // Development/Debug Tools (auto-skipped)
-    '_debugbar/*',
-    'horizon/*',
-    '_ignition/*',
-    'telescope/*',
-    'clockwork/*',
-    
-    // Custom Routes
-    '*.pdf',              // All PDF files
-    '*/downloads/*',      // Download routes
-    'assets/*',           // Static assets
-    'admin/reports/*',    // Custom admin routes
-],
-```
+   **Laravel 11.x / 12.x – `bootstrap/app.php`**
 
-### Custom Route Patterns
+   Extend the existing `->withMiddleware` closure generated by the Laravel 11 skeleton:
 
-If you've customized debug tool routes, update skip patterns:
+   ```php
+   use Illuminate\Foundation\Configuration\Middleware;
 
-```php
-'skip' => [
-    'admin/horizon/*',      // Custom Horizon route
-    'debug/telescope/*',    // Custom Telescope route
-    'tools/debugbar/*',     // Custom Debugbar route
-],
-```
+   return Application::configure(basePath: __DIR__.'/../')
+       // ... other configuration calls
+       ->withMiddleware(function (Middleware $middleware) {
+           $middleware->appendToGroup('web', [
+               \VinkiusLabs\LaravelPageSpeed\Middleware\InlineCss::class,
+               \VinkiusLabs\LaravelPageSpeed\Middleware\ElideAttributes::class,
+               \VinkiusLabs\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
+               \VinkiusLabs\LaravelPageSpeed\Middleware\CollapseWhitespace::class,
+               \VinkiusLabs\LaravelPageSpeed\Middleware\DeferJavascript::class,
+           ]);
 
----
+           // keep other group definitions here (api, broadcast, etc.)
+       })
+       ->create();
+   ```
 
-## Middleware Details
+3. Configure skip patterns in `config/laravel-page-speed.php` to exclude diagnostic tooling, binary downloads, or embedded HTML fragments:
 
-### CollapseWhitespace
+   ```php
+   'skip' => [
+       '_debugbar/*',
+       'telescope/*',
+       'horizon/*',
+       '*.pdf',
+       'admin/reports/*',
+       'exports/*',
+   ],
+   ```
 
-**Purpose**: Remove unnecessary whitespace from HTML while preserving formatting where needed.
+4. Disable globally when readability is preferred (e.g., local development):
 
-**Before** (245 KB):
-```html
-<div class="container">
-    <div class="row">
-        <div class="col-md-6">
-            <h1>Welcome</h1>
-            <p>Lorem ipsum dolor sit amet</p>
-        </div>
-    </div>
-</div>
-```
-
-**After** (159 KB):
-```html
-<div class="container"><div class="row"><div class="col-md-6"><h1>Welcome</h1><p>Lorem ipsum dolor sit amet</p></div></div></div>
-```
-
-**Features**:
-- ✅ Preserves whitespace in `<pre>`, `<code>`, `<textarea>`
-- ✅ Maintains spacing for Livewire directives
-- ✅ Safe for Alpine.js `x-*` attributes
-- ✅ Automatically calls `RemoveComments` first
-
-**Configuration**: No special configuration needed.
+   ```env
+   LARAVEL_PAGE_SPEED_ENABLE=false
+   ```
 
 ---
 
-### RemoveComments
+## 4. Middleware Reference
 
-**Purpose**: Strip HTML, CSS, and JavaScript comments.
-
-**Before**:
-```html
-<!-- Header section -->
-<header>
-    <h1>My Site</h1>
-    <!-- Navigation will go here -->
-</header>
-
-<style>
-    /* Main styles */
-    body { margin: 0; }
-</style>
-
-<script>
-    // Initialize app
-    const app = {};
-</script>
-```
-
-**After**:
-```html
-<header>
-    <h1>My Site</h1>
-</header>
-
-<style>
-    body { margin: 0; }
-</style>
-
-<script>
-    const app = {};
-</script>
-```
-
-**Features**:
-- ✅ Removes HTML comments
-- ✅ Removes CSS comments
-- ✅ Removes JavaScript comments
-- ✅ Preserves IE conditional comments
-- ✅ Safe for minified code
-
----
+| Middleware                        | Category         | Primary Effect                                     | Opt-outs                         |
+|-----------------------------------|------------------|----------------------------------------------------|----------------------------------|
+| `InlineCss`                       | Structural       | Deduplicates inline styles into deterministic CSS  | `data-ps-inline="false"`        |
+| `ElideAttributes`                | Semantics        | Drops default attributes (`type="text"`, etc.)      | `data-ps-keep-attr`              |
+| `InsertDNSPrefetch`              | Networking       | Adds DNS prefetch hints for external origins       | Remove middleware or skip route                      |
+| `CollapseWhitespace` (incl. `RemoveComments`) | Compression | Collapses whitespace, removes HTML/JS/CSS comments | `data-ps-preserve="true"`        |
+| `DeferJavascript`                | Rendering        | Adds `defer` to safe `<script>` tags               | `data-pagespeed-no-defer`        |
+| `RemoveQuotes` *(optional)*      | Aggressive       | Removes quotes from simple attributes              | Global toggle; off by default    |
+| `TrimUrls` *(optional)*          | Aggressive       | Rewrites absolute URLs to relative paths           | Global toggle; off by default    |
 
 ### InlineCss
-
-**Purpose**: Extract inline styles and move them to a `<style>` tag in the `<head>`.
-
-**Before**:
-```html
-<div style="color: red; font-size: 16px;">Hello</div>
-<div style="color: red; font-size: 16px;">World</div>
-<div style="background: blue;">Test</div>
-```
-
-**After**:
-```html
-<head>
-    <style>
-        .laravel-page-speed-css-1 { color: red; font-size: 16px; }
-        .laravel-page-speed-css-2 { background: blue; }
-    </style>
-</head>
-<body>
-    <div class="laravel-page-speed-css-1">Hello</div>
-    <div class="laravel-page-speed-css-1">World</div>
-    <div class="laravel-page-speed-css-2">Test</div>
-</body>
-```
-
-**Benefits**:
-- Reduces HTML size by deduplicating styles
-- Better compression (repeated class names)
-- Easier browser caching
-
----
-
-### DeferJavascript
-
-**Purpose**: Make all `<script>` tags non-blocking by adding `defer` attribute.
-
-**Before**:
-```html
-<script src="/js/app.js"></script>
-<script src="/js/analytics.js"></script>
-```
-
-**After**:
-```html
-<script src="/js/app.js" defer></script>
-<script src="/js/analytics.js" defer></script>
-```
-
-**Opt-out** for specific scripts:
-```html
-<!-- This script will NOT be deferred -->
-<script src="/js/critical.js" data-pagespeed-no-defer></script>
-```
-
-**Benefits**:
-- ✅ Non-blocking page render
-- ✅ Faster First Contentful Paint
-- ✅ Better PageSpeed Insights scores
-
----
+- Generates idempotent class names (`ps-inline-hash`) scoped per response.
+- Excludes selectors with dynamic tokens (`{{ }}`) or Blade control structures.
+- Benefits: increased gzip effectiveness, centralised caching semantics.
 
 ### ElideAttributes
-
-**Purpose**: Remove HTML attributes when the value equals the default.
-
-**Before**:
-```html
-<button type="submit">Submit</button>
-<input type="text" />
-<form method="get">
-<script type="text/javascript" src="app.js"></script>
-```
-
-**After**:
-```html
-<button>Submit</button>
-<input />
-<form>
-<script src="app.js"></script>
-```
-
-**Removed Attributes**:
-- `type="submit"` on `<button>`
-- `type="text"` on `<input>`
-- `method="get"` on `<form>`
-- `type="text/javascript"` on `<script>`
-
----
+- Follows WHATWG defaults. Examples: `type="submit"` on `<button>`, `method="get"` on `<form>`, `type="text/javascript"` on `<script>`.
+- Safe with Livewire/Alpine because data attributes are never removed.
 
 ### InsertDNSPrefetch
+- Parses `src`, `href`, and `data-*` references for absolute URLs.
+- Deduplicates origins and injects hints into `<head>` without altering CSP.
+- Can be combined with `<link rel="preconnect">` by setting `ps_preconnect_hosts` config array.
 
-**Purpose**: Add DNS prefetch hints for external resources.
+### CollapseWhitespace / RemoveComments
+- Maintains verbatim content inside `<pre>`, `<code>`, `<textarea>`, and elements with `data-ps-preserve`.
+- JS comment stripping honors `http(s)://` patterns to avoid breaking URLs.
+- HTML conditional comments `<!--[if IE]>` are retained by explicit whitelist.
 
-**Before**:
-```html
-<head>
-    <title>My Site</title>
-</head>
-<body>
-    <img src="https://cdn.example.com/image.jpg" />
-    <script src="https://analytics.google.com/script.js"></script>
-</body>
-```
+### DeferJavascript
+- Adds `defer` when **all** conditions are met:
+  - Tag uses `src` (no inline scripts).
+  - Absent `async`, `defer`, or `nomodule` attributes.
+  - Not marked with `data-pagespeed-no-defer`.
+- Keeps execution order stable, enabling faster FCP without losing script dependencies.
 
-**After**:
-```html
-<head>
-    <title>My Site</title>
-    <link rel="dns-prefetch" href="//cdn.example.com" />
-    <link rel="dns-prefetch" href="//analytics.google.com" />
-</head>
-<body>
-    <img src="https://cdn.example.com/image.jpg" />
-    <script src="https://analytics.google.com/script.js"></script>
-</body>
-```
-
-**Benefits**:
-- Reduces DNS lookup time (can be 100-500ms)
-- Faster resource loading
-- Better for mobile networks
+### Optional Aggressive Passes
+- `RemoveQuotes` and `TrimUrls` remain disabled by default. Enable them only after verifying templates do not rely on quoted attributes or absolute URLs (e.g., for email clients or canonical links).
 
 ---
 
-### RemoveQuotes ⚠️
+## 5. Integration Patterns
 
-**Purpose**: Remove unnecessary quotes from HTML attributes.
+### Global HTML Output
+Apply middleware to the global stack for consistent results across SSR routes and Inertia responses.
 
-**Risk**: Medium - May break attributes with special characters.
+### Route-Scoped
+Wrap individual controllers with middleware groups to keep admin panels pristine while still optimizing public marketing pages:
 
-**Before**:
-```html
-<div class="container" id="main" data-value="123">
+```php
+Route::middleware(['page-speed.html'])->group(function () {
+    Route::view('/', 'landing.index');
+    Route::view('/pricing', 'landing.pricing');
+});
 ```
 
-**After**:
-```html
-<div class=container id=main data-value=123>
+### Conditional Skipping
+Add runtime guards in controllers for outputs that must remain unaltered (e.g., PDF rendering or signed HTML exports):
+
+```php
+if (app()->bound('pagespeed.skip')) {
+    app('pagespeed.skip')();
+}
 ```
-
-**When to Use**:
-- ✅ Simple attribute values (alphanumeric)
-- ❌ Attributes with spaces or special characters
-
-**Configuration**: Disabled by default. Enable only if you're sure your HTML is compatible.
 
 ---
 
-### TrimUrls ⚠️
+## 6. Instrumentation and Benchmarking
 
-**Purpose**: Convert absolute URLs to relative URLs.
+- Use [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) or WebPageTest to capture FCP/LCP before and after activation.
+- Add server-side timing with Symfony Stopwatch or Laravel Telescope to measure response serialization deltas (typically <3 ms per response).
+- Export metrics by enabling the API Performance Headers middleware even on Blade routes to retrieve `X-Response-Time` and `X-Memory-Usage`.
 
-**Risk**: Medium - Can break if HTML is embedded in other pages.
+Sample `pwsh` script for repeatable benchmarks:
 
-**Before**:
-```html
-<a href="https://example.com/about">About</a>
-<img src="https://example.com/image.jpg" />
+```powershell
+1..5 | ForEach-Object {
+    Invoke-WebRequest https://localhost/pricing | Select-Object -ExpandProperty RawContentLength
+}
 ```
 
-**After**:
-```html
-<a href="/about">About</a>
-<img src="/image.jpg" />
-```
+---
 
-**When to Use**:
-- ✅ Standard web pages
-- ❌ Email templates
-- ❌ Content that will be embedded elsewhere
+## 7. Validation Strategy
+
+1. **Unit Coverage** – extend Blade view tests to assert HTML fragments using `assertDontSee` for removed comments/attributes.
+2. **Snapshot Testing** – store golden HTML fixtures (pre/post) and diff them via PHPUnit snapshot libraries.
+3. **Interactive QA** – verify Livewire components, Alpine transitions, and third-party widgets to confirm opt-out markers.
+4. **Synthetic Monitoring** – wire Chrome UX Report or SpeedCurve synthetic monitors to detect regressions in FCP/LCP.
+
+---
+
+## 8. Troubleshooting
+
+| Symptom                                   | Root Cause                                             | Mitigation                                                     |
+|-------------------------------------------|--------------------------------------------------------|----------------------------------------------------------------|
+| Missing whitespace in `<pre>` blocks      | Element not automatically detected                     | Add `data-ps-preserve="true"` or disable CollapseWhitespace.   |
+| JS bundle fails due to comment removal    | Inline IIFE assumed comment presence                   | Mark script with `data-pagespeed-no-defer` and skip removal.   |
+| CDN requests still incur DNS lookups      | Prefetch hints not processed by CSP                    | Extend CSP `prefetch-src` directive or enable `preconnect`.    |
+| Forms losing default behaviour            | Attribute elision undesired in specific template       | Add `data-ps-keep-attr` to element or disable ElideAttributes. |
+| AMP/email templates break                 | Optional passes removing quotes or rewriting URLs      | Leave advanced toggles off or create dedicated skip routes.    |
+
+When in doubt, instrument templates with Blade comments showing the current middleware flags to surface configuration quickly.
 
 **Configuration**: Disabled by default. Test thoroughly before enabling.
 
@@ -652,7 +472,7 @@ Use tools to verify improvements:
 **Symptom**: No noticeable speed improvement.
 
 **Checklist**:
-1. ✅ Verify middleware is enabled in `Kernel.php`
+1. ✅ Verify middleware is enabled in `app/Http/Kernel.php` (Laravel 10) or `bootstrap/app.php` (Laravel 11/12)
 2. ✅ Check `LARAVEL_PAGE_SPEED_ENABLE=true` in `.env`
 3. ✅ Clear cache: `php artisan cache:clear`
 4. ✅ Check if routes are being skipped unintentionally

@@ -1,350 +1,181 @@
-# 🎯 API Optimization Examples - Before & After
-
-This document shows real-world examples of API responses before and after applying Laravel Page Speed API middlewares.
-
-## Example 1: Product List API
-
-### Before Laravel Page Speed
-
-**Request:**
-```http
-GET /api/products HTTP/1.1
-Host: api.example.com
-Accept: application/json
-```
-
-**Response:**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Length: 15234
-
-[
-  {
-    "id": 1,
-    "name": "Professional Camera Kit",
-    "description": "High-quality camera with multiple lenses and accessories for professional photography",
-    "price": 1299.99,
-    "category": "Electronics",
-    "stock": 45,
-    "images": [
-      "https://cdn.example.com/images/camera-1.jpg",
-      "https://cdn.example.com/images/camera-2.jpg"
-    ],
-    "specifications": {
-      "megapixels": 24.2,
-      "sensor": "Full Frame CMOS",
-      "iso_range": "100-51200"
-    }
-  },
-  // ... 99 more products
-]
-```
-
-**Issues:**
-- ❌ No compression (15.2 KB transferred)
-- ❌ No caching (same data transferred every time)
-- ❌ No security headers
-- ❌ No performance metrics
-- ❌ No way to trace slow requests
-
----
-
-### After Laravel Page Speed
-
-**Request:**
-```http
-GET /api/products HTTP/1.1
-Host: api.example.com
-Accept: application/json
-Accept-Encoding: gzip, br
-```
-
-**Response (First Request):**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Encoding: br
-Content-Length: 2847
-ETag: "5d41402abc4b2a76b9719d911017c592"
-Cache-Control: private, max-age=300, must-revalidate
-Vary: Accept-Encoding
-
-X-Response-Time: 234.56ms
-X-Memory-Usage: 2.34 MB
-X-Query-Count: 3
-X-Request-ID: 20251025142530-a3f9c2d1
-X-Original-Size: 15234
-X-Compressed-Size: 2847
-X-Compression-Savings: 81.31%
-
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
-Permissions-Policy: geolocation=(), microphone=(), camera=()
-
-[compressed binary data]
-```
-
-**Benefits:**
-- ✅ **81% smaller** (2.8 KB vs 15.2 KB)
-- ✅ **Cached** (ETag for future requests)
-- ✅ **7 security headers** added
-- ✅ **Performance metrics** visible
-- ✅ **Request tracing** enabled
-
----
-
-**Second Request (Cached):**
-```http
-GET /api/products HTTP/1.1
-Host: api.example.com
-Accept: application/json
-If-None-Match: "5d41402abc4b2a76b9719d911017c592"
-```
-
-**Response:**
-```http
-HTTP/1.1 304 Not Modified
-ETag: "5d41402abc4b2a76b9719d911017c592"
-X-Response-Time: 12.34ms
-X-Request-ID: 20251025142545-b7e8f3a2
-
-(no body - client uses cached data)
-```
-
-**Benefits:**
-- ✅ **0 bytes transferred** (304 response)
-- ✅ **95% faster** (12ms vs 234ms)
-- ✅ **Server CPU saved**
-
----
-
-## Example 2: User Profile API
-
-### Before Laravel Page Speed
-
-**Request:**
-```http
-GET /api/users/123 HTTP/1.1
-Host: api.example.com
-```
-
-**Response:**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Length: 856
-
-{
-  "id": 123,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "profile": {
-    "bio": "Software developer passionate about clean code and performance optimization",
-    "avatar": "https://cdn.example.com/avatars/john-doe.jpg",
-    "location": "San Francisco, CA",
-    "website": "https://johndoe.dev"
-  },
-  "stats": {
-    "followers": 1234,
-    "following": 567,
-    "posts": 89
-  },
-  "created_at": "2020-01-15T10:30:00Z",
-  "updated_at": "2025-10-24T15:45:00Z"
-}
-```
-
----
-
-### After Laravel Page Speed
-
-**Response:**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Encoding: gzip
-Content-Length: 387
-ETag: "3c9d3c4e8f9a2b1d7e6f5a4c3b2a1e0d"
-Cache-Control: private, max-age=300, must-revalidate
-
-X-Response-Time: 45.23ms
-X-Memory-Usage: 512.00 KB
-X-Query-Count: 4
-X-Request-ID: 20251025143000-c4d5e6f7
-
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-Strict-Transport-Security: max-age=31536000
-
-[compressed data]
-```
-
-**Improvements:**
-- 📉 **55% smaller** (387 bytes vs 856 bytes)
-- 🔒 **Secure** (HSTS, XSS protection, etc.)
-- 📊 **Observable** (4 DB queries detected)
-- ⚡ **Cacheable** (5 min cache)
-
----
-
-## Example 3: Slow Endpoint Detection
-
-### API with N+1 Query Problem
-
-**Request:**
-```http
-GET /api/orders?include=customer,items HTTP/1.1
-Host: api.example.com
-```
-
-**Response Headers:**
-```http
-X-Response-Time: 3245.67ms
-X-Memory-Usage: 15.23 MB
-X-Query-Count: 87
-X-Performance-Warning: High query count detected
-X-Request-ID: 20251025143100-d7e8f9a0
-```
-
-**What This Tells You:**
-- ⚠️ **87 database queries** - N+1 problem!
-- ⚠️ **3.2 seconds** - Very slow!
-- ⚠️ **15 MB memory** - High usage
-- 🔍 **Request ID** for log tracing
-
-**Action:** Fix eager loading:
-```php
-// Before (causing N+1)
-Order::all()->load('customer', 'items');
-
-// After (fixed)
-Order::with('customer', 'items')->get();
-```
-
-**After Fix:**
-```http
-X-Response-Time: 145.32ms
-X-Memory-Usage: 2.45 MB
-X-Query-Count: 3
-X-Request-ID: 20251025143200-e8f9a0b1
-```
-
-**Results:**
-- ✅ **95% faster** (145ms vs 3245ms)
-- ✅ **84% less memory** (2.4 MB vs 15.2 MB)
-- ✅ **97% fewer queries** (3 vs 87)
-
----
-
-## Example 4: Error Response
-
-### Before Laravel Page Speed
-
-**Request:**
-```http
-GET /api/users/999999 HTTP/1.1
-Host: api.example.com
-```
-
-**Response:**
-```http
-HTTP/1.1 404 Not Found
-Content-Type: application/json
-Content-Length: 87
-
-{
-  "error": "User not found",
-  "message": "The requested user does not exist",
-  "code": 404
-}
-```
-
----
-
-### After Laravel Page Speed
-
-**Response:**
-```http
-HTTP/1.1 404 Not Found
-Content-Type: application/json
-Content-Length: 87
-
-X-Response-Time: 12.45ms
-X-Memory-Usage: 256.00 KB
-X-Query-Count: 1
-X-Request-ID: 20251025143300-f9a0b1c2
-
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-
-{
-  "error": "User not found",
-  "message": "The requested user does not exist",
-  "code": 404
-}
-```
-
-**Notes:**
-- ✅ Error response **NOT compressed** (too small, optional config)
-- ✅ Still has **security headers**
-- ✅ Still has **performance metrics**
-- ✅ **Request ID** for debugging
-
----
-
-## Real-World Performance Impact
-
-### High-Traffic API (1M requests/day)
-
-| Metric | Before | After | Savings |
-|--------|--------|-------|---------|
-| **Bandwidth** | 15 TB/day | 3 TB/day | **80% reduction** |
-| **Avg Response Time** | 450ms | 180ms | **60% faster** |
-| **Cache Hit Rate** | 0% | 65% | **65% fewer DB queries** |
-| **Server CPU** | 85% avg | 45% avg | **47% less CPU** |
-| **Monthly Bandwidth Cost** | $450 | $90 | **$360 saved** |
-
-### API Monitoring Dashboard Integration
-
-Use the headers with your monitoring tools:
-
-**DataDog:**
-```javascript
-// Extract metrics from response headers
-const responseTime = parseFloat(response.headers['x-response-time']);
-const queryCount = parseInt(response.headers['x-query-count']);
-const requestId = response.headers['x-request-id'];
-
 statsd.histogram('api.response_time', responseTime);
-statsd.gauge('api.query_count', queryCount);
+# Scenario Playbooks for API Optimization
+
+Curated configurations that show how Laravel Page Speed can be embedded into different API domains. Each playbook provides baseline metrics, recommended middleware combinations, and validation steps you can replicate in staging.
+
+---
+
+## Table of Contents
+
+- [1. E-commerce Catalogue API](#1-e-commerce-catalogue-api)
+- [2. SaaS Multi-tenant API](#2-saas-multi-tenant-api)
+- [3. Mobile Backend for Fintech](#3-mobile-backend-for-fintech)
+- [4. Microservices Gateway](#4-microservices-gateway)
+- [5. Observability Recipes](#5-observability-recipes)
+
+---
+
+## 1. E-commerce Catalogue API
+
+**Context:** Product and pricing data served to storefronts and partner marketplaces. High read/write asymmetry (90% GET).
+
+| Metric                         | Baseline        | Optimized (cache hit) | Delta |
+|--------------------------------|-----------------|-----------------------|-------|
+| Payload size (JSON, 100 items) | 15.2 KB         | 2.8 KB                | -82%  |
+| Response latency               | 430 ms          | 12 ms                 | -97%  |
+| SQL queries                    | 35              | 0                     | -100% |
+| Cache hit rate                 | 0%              | 65%                   | +65pp |
+
+**Recommended middleware order:**
+
+```php
+\VinkiusLabs\LaravelPageSpeed\Middleware\ApiSecurityHeaders::class,
+\VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCache::class,
+\VinkiusLabs\LaravelPageSpeed\Middleware\ApiETag::class,
+\VinkiusLabs\LaravelPageSpeed\Middleware\ApiResponseCompression::class,
+\VinkiusLabs\LaravelPageSpeed\Middleware\ApiPerformanceHeaders::class,
 ```
 
-**New Relic:**
+**Configuration highlights:**
+
+```env
+API_CACHE_ENABLED=true
+API_CACHE_DRIVER=redis
+API_CACHE_TTL=300
+API_CACHE_DYNAMIC_TAGS=true
+API_CACHE_PURGE_METHODS="POST,PUT,PATCH,DELETE"
+API_MIN_COMPRESSION_SIZE=1024
+API_SHOW_COMPRESSION_METRICS=true
+```
+
+**Validation checklist:**
+- Run k6 load test with 200 virtual users hitting `/api/catalogue?page=1`.
+- Validate `X-Cache-Status` transitions from `MISS` to `HIT` after warm-up.
+- Confirm `api.products.update` controller triggers cache invalidation via mutation tests in `tests/Middleware/ApiResponseCacheTest.php`.
+- Assert merchandising dashboards still receive fresh data (cache TTL remains short).
+
+---
+
+## 2. SaaS Multi-tenant API
+
+**Context:** CRM-style SaaS with tenant isolation and per-user data. Read/write ratio balanced, and regulatory requirements demand strict security headers.
+
+| Metric                          | Baseline | Optimized | Notes                                   |
+|---------------------------------|----------|-----------|-----------------------------------------|
+| Bandwidth per tenant/day        | 1.2 GB   | 410 MB    | -66% via compression + caching          |
+| Error budget consumption        | 2.4%     | 0.6%      | Circuit breaker prevented cascading failures |
+| Security compliance checklist   | 68%      | 100%      | Automated headers satisfied PCI/SOC2    |
+
+**Key configuration:**
+
+```env
+API_CACHE_ENABLED=true
+API_CACHE_PER_USER=true
+API_CACHE_AUTHENTICATED=true
+API_CIRCUIT_BREAKER_ENABLED=true
+API_CIRCUIT_BREAKER_THRESHOLD=5
+API_CIRCUIT_BREAKER_TIMEOUT=60
+API_CIRCUIT_BREAKER_SCOPE=route
+```
+
+**Testing approach:**
+- Use PHPUnit feature tests with Sanctum tokens to assert cache segmentation by tenant/user id.
+- Simulate downstream CRM outage using Laravel’s HTTP client fakes and verify `fallback_status_code` is returned with `X-Circuit-Breaker-State: open`.
+- Run OWASP ZAP or Burp to validate CSP/HSTS headers align with compliance requirements.
+
+---
+
+## 3. Mobile Backend for Fintech
+
+**Context:** Mobile clients pulling account snapshots every 30 seconds. Payloads are small but frequent, so composite caching and aggressive compression may not help.
+
+| Decision point                          | Recommendation                                    |
+|-----------------------------------------|---------------------------------------------------|
+| Compression for <512B payloads          | Disable (`API_MIN_COMPRESSION_SIZE=2048`)         |
+| Health endpoint                         | Enable `/health` with disk + DB metrics           |
+| Cache strategy                          | Keep disabled, rely on ETags for revalidation     |
+| Circuit breaker                         | Enable with `error_codes=[500, 502, 503, 504]`    |
+
+**Sample response headers after tuning:**
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "w/\"txn-20251025-87\""
+Cache-Control: private, max-age=60, must-revalidate
+X-Response-Time: 28.75ms
+X-Request-ID: 20251025-fn-8c1d
+X-Circuit-Breaker-State: closed
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+```
+
+**Verification:**
+- Instrument API Gateway / ALB to ensure `If-None-Match` is propagated downstream.
+- Validate that device clients gracefully handle `304 Not Modified` (reduces over-the-air usage without local cache divergence).
+- Monitor `X-Circuit-Breaker-State` via Grafana to catch early degradation of third-party payment processors.
+
+---
+
+## 4. Microservices Gateway
+
+**Context:** A BFF (Backend for Frontend) aggregating multiple upstream microservices. Latency is dominated by upstream calls, and observability is paramount.
+
+**Middleware emphasis:**
+
+- Enable `ApiPerformanceHeaders` and propagate `X-Request-ID` to downstream services.
+- Use `ApiResponseCache` selectively on aggregation endpoints (e.g., `/api/dashboard`) with short TTL (15 seconds).
+- Pair with `ApiResponseCompression` to control response size when bundling multiple upstream payloads.
+
+**Example aggregator controller:**
+
+```php
+public function show(DashboardAggregator $aggregator)
+{
+    $response = $aggregator->hydrate(request()->user());
+
+    return response()->json($response)
+        ->header('X-Upstream-Latency', $aggregator->latency());
+}
+```
+
+`X-Upstream-Latency` can be combined with `X-Response-Time` to isolate gateway overhead vs upstream cost.
+
+**Monitoring plan:**
+- Install Envoy/Service Mesh filters that forward `X-Request-ID` into Jaeger/OpenTelemetry traces.
+- Alert when `X-Performance-Warning` appears more than 5 times within five minutes for a given route.
+
+---
+
+## 5. Observability Recipes
+
+### Datadog
+
 ```javascript
-newrelic.addCustomAttribute('request_id', requestId);
-newrelic.addCustomAttribute('query_count', queryCount);
+const responseTime = parseFloat(response.headers['x-response-time']);
+const cacheStatus = response.headers['x-cache-status'] ?? 'MISS';
+const breakerState = response.headers['x-circuit-breaker-state'] ?? 'closed';
+
+statsd.histogram('api.response_time', responseTime, [`cache:${cacheStatus}`, `breaker:${breakerState}`]);
+```
+
+### New Relic Browser / SPA
+
+```javascript
+newrelic.addCustomAttribute('cache_status', cacheStatus);
+newrelic.addCustomAttribute('request_id', response.headers['x-request-id']);
 newrelic.recordMetric('Custom/API/ResponseTime', responseTime);
 ```
 
----
+### Prometheus (via nginx ingress annotations)
 
-## Summary
+```
+nginx.ingress.kubernetes.io/configuration-snippet: |
+  more_set_headers "X-Cache-Status: $upstream_http_x_cache_status";
+  more_set_headers "X-Response-Time: $upstream_http_x_response_time";
+```
 
-Laravel Page Speed API middlewares provide:
-
-1. **Massive Bandwidth Savings** (60-85% reduction)
-2. **Faster Responses** (caching + compression)
-3. **Better Security** (7+ headers automatically)
-4. **Full Observability** (metrics for every request)
-5. **Zero Code Changes** (just add middleware)
-6. **Production Ready** (tested with 149 unit tests)
-
-**And most importantly: Your API data is NEVER modified!** ✅
+Tie these headers to Grafana panels to surface cache efficiency, compression ratio, and circuit breaker state trends.
 
 ---
 
-**Ready to optimize your APIs?** [Get Started →](API-OPTIMIZATION.md)
+These playbooks provide repeatable recipes. Start from the scenario closest to your workload, run the validation checklist in staging, and only then roll out to production with feature flags for quick rollback.
