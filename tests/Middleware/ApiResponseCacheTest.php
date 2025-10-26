@@ -79,53 +79,27 @@ class ApiResponseCacheTest extends TestCase
     }
 
     /**
-     * Test: Mutations invalidate cached GET responses.
+     * Test: PUT requests invalidate cached GET responses.
      */
-    public function test_mutating_requests_invalidate_cache(): void
+    public function test_put_requests_invalidate_cache(): void
     {
-        $initialJson = json_encode(['id' => 1, 'name' => 'Initial']);
-        $updatedJson = json_encode(['id' => 1, 'name' => 'Updated']);
+        $this->assertCacheInvalidatedBy('PUT');
+    }
 
-        $getRequest = Request::create('/api/users/1', 'GET');
-        $mutationRequest = Request::create('/api/users/1', 'PUT');
+    /**
+     * Test: PATCH requests invalidate cached GET responses.
+     */
+    public function test_patch_requests_invalidate_cache(): void
+    {
+        $this->assertCacheInvalidatedBy('PATCH', 200);
+    }
 
-        $initialResponse = new Response($initialJson, 200, ['Content-Type' => 'application/json']);
-        $updatedResponse = new Response($updatedJson, 200, ['Content-Type' => 'application/json']);
-
-        // Ensure cache key is identical for GET and mutation requests
-        $reflection = new \ReflectionMethod(ApiResponseCache::class, 'generateCacheKey');
-        $reflection->setAccessible(true);
-        $cacheKey = $reflection->invoke($this->middleware, $getRequest);
-        $this->assertSame($cacheKey, $reflection->invoke($this->middleware, $mutationRequest));
-
-        // Seed cache with initial GET response
-        $this->middleware->handle($getRequest, function () use ($initialResponse) {
-            return $initialResponse;
-        });
-
-        $this->assertTrue(Cache::store('array')->has($cacheKey));
-
-        // Confirm cached response is used
-        $cachedResponse = $this->middleware->handle($getRequest, function () {
-            throw new \Exception('Should be served from cache');
-        });
-
-        $this->assertEquals('HIT', $cachedResponse->headers->get('X-Cache-Status'));
-
-        // Perform mutation which should invalidate cache
-        $this->middleware->handle($mutationRequest, function () {
-            return new Response('', 204);
-        });
-
-        $this->assertFalse(Cache::store('array')->has($cacheKey));
-
-        // Next GET should be treated as cache miss and return updated content
-        $freshResponse = $this->middleware->handle($getRequest, function () use ($updatedResponse) {
-            return $updatedResponse;
-        });
-
-        $this->assertEquals('MISS', $freshResponse->headers->get('X-Cache-Status'));
-        $this->assertEquals($updatedJson, $freshResponse->getContent());
+    /**
+     * Test: DELETE requests invalidate cached GET responses.
+     */
+    public function test_delete_requests_invalidate_cache(): void
+    {
+        $this->assertCacheInvalidatedBy('DELETE');
     }
 
     /**
@@ -365,5 +339,154 @@ class ApiResponseCacheTest extends TestCase
         });
 
         $this->assertEquals('MISS', $result2->headers->get('X-Cache-Status'));
+    }
+
+    /**
+     * Test: Collection mutations purge all query variants automatically.
+     */
+    public function test_post_requests_purge_collection_variants(): void
+    {
+        config(['laravel-page-speed.api.cache.purge_methods' => ['POST', 'PUT', 'PATCH', 'DELETE']]);
+
+        $listRequest = Request::create('/api/users?page=1', 'GET');
+        $listResponse = new Response(json_encode(['page' => 1]), 200, ['Content-Type' => 'application/json']);
+
+        $altListRequest = Request::create('/api/users?page=2&sort=name', 'GET');
+        $altListResponse = new Response(json_encode(['page' => 2]), 200, ['Content-Type' => 'application/json']);
+
+        $reflection = new \ReflectionMethod(ApiResponseCache::class, 'generateCacheKey');
+        $reflection->setAccessible(true);
+        $keyPage1 = $reflection->invoke($this->middleware, $listRequest);
+        $keyPage2 = $reflection->invoke($this->middleware, $altListRequest);
+
+        // Seed caches
+        $this->middleware->handle($listRequest, function () use ($listResponse) {
+            return $listResponse;
+        });
+        $this->middleware->handle($altListRequest, function () use ($altListResponse) {
+            return $altListResponse;
+        });
+
+        $this->assertTrue(Cache::store('array')->has($keyPage1));
+        $this->assertTrue(Cache::store('array')->has($keyPage2));
+
+        // Confirm hits
+        $cachedPage1 = $this->middleware->handle($listRequest, function () {
+            throw new \Exception('Should hit cache for page 1');
+        });
+        $cachedPage2 = $this->middleware->handle($altListRequest, function () {
+            throw new \Exception('Should hit cache for page 2');
+        });
+
+        $this->assertEquals('HIT', $cachedPage1->headers->get('X-Cache-Status'));
+        $this->assertEquals('HIT', $cachedPage2->headers->get('X-Cache-Status'));
+
+        // Mutation invalidates both variants
+        $postRequest = Request::create('/api/users', 'POST');
+        $this->middleware->handle($postRequest, function () {
+            return new Response(json_encode(['created' => true]), 201, ['Content-Type' => 'application/json']);
+        });
+
+        $this->assertFalse(Cache::store('array')->has($keyPage1));
+        $this->assertFalse(Cache::store('array')->has($keyPage2));
+
+        // Fresh requests should miss and reflect new payload
+        $updatedListResponse = new Response(json_encode(['page' => 1, 'fresh' => true]), 200, ['Content-Type' => 'application/json']);
+        $freshResult = $this->middleware->handle($listRequest, function () use ($updatedListResponse) {
+            return $updatedListResponse;
+        });
+
+        $this->assertEquals('MISS', $freshResult->headers->get('X-Cache-Status'));
+        $this->assertStringContainsString('fresh', $freshResult->getContent());
+    }
+
+    /**
+     * Test: Nested resource mutations purge parent list caches.
+     */
+    public function test_nested_resource_mutations_invalidate_parent_lists(): void
+    {
+        config(['laravel-page-speed.api.cache.purge_methods' => ['POST', 'PUT', 'PATCH', 'DELETE']]);
+
+        $listRequest = Request::create('/api/users/1/posts?page=1', 'GET');
+        $listResponse = new Response(json_encode(['posts' => [1, 2, 3]]), 200, ['Content-Type' => 'application/json']);
+
+        $reflection = new \ReflectionMethod(ApiResponseCache::class, 'generateCacheKey');
+        $reflection->setAccessible(true);
+        $listKey = $reflection->invoke($this->middleware, $listRequest);
+
+        $this->middleware->handle($listRequest, function () use ($listResponse) {
+            return $listResponse;
+        });
+
+        $this->assertTrue(Cache::store('array')->has($listKey));
+
+        // Confirm cached response
+        $cachedList = $this->middleware->handle($listRequest, function () {
+            throw new \Exception('Nested list should be cached');
+        });
+        $this->assertEquals('HIT', $cachedList->headers->get('X-Cache-Status'));
+
+        // Delete nested resource => should purge list cache
+        $deleteRequest = Request::create('/api/users/1/posts/42', 'DELETE');
+        $this->middleware->handle($deleteRequest, function () {
+            return new Response('', 204);
+        });
+
+        $this->assertFalse(Cache::store('array')->has($listKey));
+
+        $updatedListResponse = new Response(json_encode(['posts' => [1, 3]]), 200, ['Content-Type' => 'application/json']);
+        $freshList = $this->middleware->handle($listRequest, function () use ($updatedListResponse) {
+            return $updatedListResponse;
+        });
+
+        $this->assertEquals('MISS', $freshList->headers->get('X-Cache-Status'));
+        $this->assertStringContainsString('3', $freshList->getContent());
+    }
+
+    /**
+     * Helper to ensure mutation verbs purge cached GET content.
+     */
+    protected function assertCacheInvalidatedBy(string $method, int $mutationStatus = 204): void
+    {
+        config(['laravel-page-speed.api.cache.purge_methods' => ['POST', 'PUT', 'PATCH', 'DELETE']]);
+
+        $initialJson = json_encode(['id' => 1, 'state' => 'initial']);
+        $updatedJson = json_encode(['id' => 1, 'state' => strtolower($method)]);
+
+        $getRequest = Request::create('/api/users/1', 'GET');
+        $mutationRequest = Request::create('/api/users/1', $method);
+
+        $initialResponse = new Response($initialJson, 200, ['Content-Type' => 'application/json']);
+        $updatedResponse = new Response($updatedJson, 200, ['Content-Type' => 'application/json']);
+
+        $reflection = new \ReflectionMethod(ApiResponseCache::class, 'generateCacheKey');
+        $reflection->setAccessible(true);
+        $cacheKey = $reflection->invoke($this->middleware, $getRequest);
+        $this->assertSame($cacheKey, $reflection->invoke($this->middleware, $mutationRequest));
+
+        $this->middleware->handle($getRequest, function () use ($initialResponse) {
+            return $initialResponse;
+        });
+
+        $this->assertTrue(Cache::store('array')->has($cacheKey));
+
+        $cachedResponse = $this->middleware->handle($getRequest, function () {
+            throw new \Exception('Should be served from cache');
+        });
+
+        $this->assertEquals('HIT', $cachedResponse->headers->get('X-Cache-Status'));
+
+        $this->middleware->handle($mutationRequest, function () use ($mutationStatus) {
+            return new Response('', $mutationStatus);
+        });
+
+        $this->assertFalse(Cache::store('array')->has($cacheKey));
+
+        $freshResponse = $this->middleware->handle($getRequest, function () use ($updatedResponse) {
+            return $updatedResponse;
+        });
+
+        $this->assertEquals('MISS', $freshResponse->headers->get('X-Cache-Status'));
+        $this->assertEquals($updatedJson, $freshResponse->getContent());
     }
 }

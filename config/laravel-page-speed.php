@@ -131,6 +131,12 @@ return [
                 'application/vnd.api+json',
             ],
             'purge_methods' => ['POST', 'PUT', 'PATCH', 'DELETE'], // HTTP verbs that invalidate cached GETs
+            'dynamic_tagging' => [
+                'enabled' => env('API_CACHE_DYNAMIC_TAGS', true),
+                'ignore_segments' => ['api'],
+                'normalize_ids' => true,
+                'max_depth' => 5,
+            ],
         ],
 
         /*

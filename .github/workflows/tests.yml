@@ -47,14 +47,13 @@ jobs:
 
             - name: Install dependencies
               run: |
-                  composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
-                  composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction
+                  COMPOSER_MEMORY_LIMIT=-1 composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --with="laravel/framework:${{ matrix.laravel }}" --with="orchestra/testbench:${{ matrix.testbench }}"
 
             - name: List Installed Dependencies
               run: composer show -D
 
             - name: Execute tests
-              run: vendor/bin/phpunit
+              run: php -d memory_limit=512M vendor/bin/phpunit
 
             - name: Check code style
               run: vendor/bin/phpcs -p --standard=PSR2 --runtime-set ignore_errors_on_exit 1 --runtime-set ignore_warnings_on_exit 1 src tests

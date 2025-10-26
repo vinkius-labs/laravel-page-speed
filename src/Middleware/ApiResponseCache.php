@@ -5,6 +5,7 @@ namespace VinkiusLabs\LaravelPageSpeed\Middleware;
 use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * API Response Cache Middleware
@@ -267,12 +268,17 @@ class ApiResponseCache extends PageSpeed
         }
 
         try {
-            $indexKey = $this->getTagIndexKey($tags);
-            $keys = $store->get($indexKey, []);
-            $keys[$cacheKey] = now()->addSeconds($ttl)->getTimestamp();
+            $expiry = now()->addSeconds($ttl)->getTimestamp();
+            $indexTtl = max($ttl, 600);
 
-            // Keep index fresh slightly longer than cache TTL to ensure cleanup
-            $store->put($indexKey, $keys, max($ttl, 600));
+            foreach (array_unique($tags) as $tag) {
+                $indexKey = $this->getTagStorageKey($tag);
+                $entries = $store->get($indexKey, []);
+                $entries = $this->pruneExpiredIndexEntries($entries);
+                $entries[$cacheKey] = $expiry;
+
+                $store->put($indexKey, $entries, $indexTtl);
+            }
         } catch (\Exception $e) {
             Log::debug('API cache index write failed', [
                 'key' => $cacheKey,
@@ -291,21 +297,24 @@ class ApiResponseCache extends PageSpeed
      */
     protected function flushIndexedKeys($store, array $tags)
     {
+        $invalidated = false;
+
         try {
-            $indexKey = $this->getTagIndexKey($tags);
-            $keys = $store->get($indexKey, []);
+            foreach (array_unique($tags) as $tag) {
+                $indexKey = $this->getTagStorageKey($tag);
+                $entries = $store->get($indexKey, []);
 
-            if (empty($keys)) {
-                return false;
+                if (empty($entries)) {
+                    continue;
+                }
+
+                foreach (array_keys($entries) as $cacheKey) {
+                    $store->forget($cacheKey);
+                }
+
+                $store->forget($indexKey);
+                $invalidated = true;
             }
-
-            foreach (array_keys($keys) as $cacheKey) {
-                $store->forget($cacheKey);
-            }
-
-            $store->forget($indexKey);
-
-            return true;
         } catch (\Exception $e) {
             Log::debug('API cache index flush failed', [
                 'tags' => $tags,
@@ -313,20 +322,41 @@ class ApiResponseCache extends PageSpeed
             ]);
         }
 
-        return false;
+        return $invalidated;
     }
 
     /**
-     * Build deterministic index key for a given tag list.
+     * Build deterministic storage key for a given tag.
      *
-     * @param  array $tags
+     * @param  string $tag
      * @return string
      */
-    protected function getTagIndexKey(array $tags)
+    protected function getTagStorageKey($tag)
     {
-        sort($tags);
+        return self::CACHE_PREFIX . 'tag_index:' . md5($tag);
+    }
 
-        return self::CACHE_PREFIX . 'tag_index:' . md5(implode('|', $tags));
+    /**
+     * Remove expired cache key references from the index.
+     *
+     * @param  array $entries
+     * @return array
+     */
+    protected function pruneExpiredIndexEntries(array $entries)
+    {
+        if (empty($entries)) {
+            return $entries;
+        }
+
+        $now = now()->getTimestamp();
+
+        foreach ($entries as $cacheKey => $timestamp) {
+            if ($timestamp <= $now) {
+                unset($entries[$cacheKey]);
+            }
+        }
+
+        return $entries;
     }
 
     /**
@@ -415,19 +445,13 @@ class ApiResponseCache extends PageSpeed
     {
         $tags = [];
 
-        // Add route-based tag
         $route = $request->route();
         if ($route && $route->getName()) {
             $tags[] = 'route:' . $route->getName();
         }
 
-        // Add path-based tag
-        $pathSegments = explode('/', trim($request->path(), '/'));
-        if (! empty($pathSegments[0])) {
-            $tags[] = 'path:' . $pathSegments[0];
-        }
+        $tags = array_merge($tags, $this->buildDynamicPathTags($request));
 
-        // Add custom tags from route
         if ($route) {
             $customTags = $route->getAction('cache_tags');
             if (is_array($customTags)) {
@@ -435,7 +459,144 @@ class ApiResponseCache extends PageSpeed
             }
         }
 
+        $tags = array_values(array_unique(array_filter($tags)));
+
         return $tags;
+    }
+
+    /**
+     * Build dynamic cache tags derived from the request path.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return array
+     */
+    protected function buildDynamicPathTags($request)
+    {
+        if (! config('laravel-page-speed.api.cache.dynamic_tagging.enabled', true)) {
+            $fallbackSegment = Str::lower(trim($request->segment(1)));
+
+            return $fallbackSegment ? ['path:' . $fallbackSegment] : [];
+        }
+
+        $segments = $this->getRelevantSegments($request);
+
+        if (empty($segments)) {
+            return [];
+        }
+
+        $maxDepth = (int) config('laravel-page-speed.api.cache.dynamic_tagging.max_depth', 5);
+        if ($maxDepth > 0) {
+            $segments = array_slice($segments, 0, $maxDepth);
+        }
+
+        $tags = [];
+
+        // Preserve compatibility with legacy path tag
+        $tags[] = 'path:' . $segments[0];
+        $tags[] = 'collection:' . $segments[0];
+
+        // Cumulative tags with raw segments
+        $cumulative = [];
+        foreach ($segments as $segment) {
+            $cumulative[] = $segment;
+            $tags[] = 'resource:' . implode(':', $cumulative);
+        }
+
+        $normalizedSegments = $this->normalizeSegments($segments);
+        $normalizedCumulative = [];
+        foreach ($normalizedSegments as $segment) {
+            $normalizedCumulative[] = $segment;
+            $tags[] = 'resource:' . implode(':', $normalizedCumulative);
+        }
+
+        $tags[] = 'fqn:' . implode('/', $segments);
+        $tags[] = 'fqn:' . implode('/', $normalizedSegments);
+
+        return array_values(array_unique($tags));
+    }
+
+    /**
+     * Filter request segments to relevant portions for tagging.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return array
+     */
+    protected function getRelevantSegments($request)
+    {
+        $segments = array_values(array_filter(explode('/', trim($request->path(), '/')), 'strlen'));
+
+        if (empty($segments)) {
+            return [];
+        }
+
+        $ignore = array_map('strtolower', config('laravel-page-speed.api.cache.dynamic_tagging.ignore_segments', ['api']));
+
+        $segments = array_values(array_filter($segments, function ($segment) use ($ignore) {
+            return ! in_array(strtolower($segment), $ignore, true);
+        }));
+
+        return array_map(function ($segment) {
+            return Str::lower($segment);
+        }, $segments);
+    }
+
+    /**
+     * Normalize path segments by replacing identifiers with placeholders when enabled.
+     *
+     * @param  array $segments
+     * @return array
+     */
+    protected function normalizeSegments(array $segments)
+    {
+        if (! config('laravel-page-speed.api.cache.dynamic_tagging.normalize_ids', true)) {
+            return $segments;
+        }
+
+        return array_map(function ($segment) {
+            return $this->normalizeSegment($segment);
+        }, $segments);
+    }
+
+    /**
+     * Normalize a single segment.
+     *
+     * @param  string $segment
+     * @return string
+     */
+    protected function normalizeSegment($segment)
+    {
+        return $this->isIdentifierSegment($segment) ? '{id}' : $segment;
+    }
+
+    /**
+     * Determine if the segment represents an identifier.
+     *
+     * @param  string $segment
+     * @return bool
+     */
+    protected function isIdentifierSegment($segment)
+    {
+        if ($segment === '') {
+            return false;
+        }
+
+        if (preg_match('/^\d+$/', $segment)) {
+            return true;
+        }
+
+        if (preg_match('/^[0-9a-f]{24}$/i', $segment) || preg_match('/^[0-9a-f]{32}$/i', $segment) || preg_match('/^[0-9a-f]{40}$/i', $segment)) {
+            return true;
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $segment)) {
+            return true;
+        }
+
+        if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', strtoupper($segment))) { // ULID support
+            return true;
+        }
+
+        return false;
     }
 
     /**
