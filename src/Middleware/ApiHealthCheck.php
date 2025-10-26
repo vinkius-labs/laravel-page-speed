@@ -250,14 +250,28 @@ class ApiHealthCheck extends PageSpeed
     {
         try {
             $path = storage_path();
-            $freeSpace = disk_free_space($path);
-            $totalSpace = disk_total_space($path);
-            $usedPercent = 100 - (($freeSpace / $totalSpace) * 100);
+            $stats = $this->getDiskSpaceStats($path);
+
+            if ($stats === null) {
+                return [
+                    'status' => 'warning',
+                    'message' => 'Disk space metrics unavailable',
+                    'free' => null,
+                    'total' => null,
+                    'used_percent' => null,
+                ];
+            }
+
+            $freeSpace = $stats['free'];
+            $totalSpace = $stats['total'];
+            $usedPercent = $totalSpace > 0
+                ? 100 - (($freeSpace / $totalSpace) * 100)
+                : null;
 
             $threshold = config('laravel-page-speed.api.health.thresholds.disk_usage_percent', 90);
-            $status = $usedPercent < $threshold ? 'ok' : 'warning';
+            $status = ($usedPercent !== null && $usedPercent < $threshold) ? 'ok' : 'warning';
 
-            if ($usedPercent >= 95) {
+            if ($usedPercent !== null && $usedPercent >= 95) {
                 $status = 'critical';
             }
 
@@ -266,7 +280,7 @@ class ApiHealthCheck extends PageSpeed
                 'message' => 'Disk space check',
                 'free' => $this->formatBytes($freeSpace),
                 'total' => $this->formatBytes($totalSpace),
-                'used_percent' => round($usedPercent, 2),
+                'used_percent' => $usedPercent !== null ? round($usedPercent, 2) : null,
             ];
         } catch (\Exception $e) {
             return [
@@ -275,6 +289,27 @@ class ApiHealthCheck extends PageSpeed
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Get disk space statistics for a given path.
+     *
+     * @param string $path
+     * @return array|null
+     */
+    protected function getDiskSpaceStats($path)
+    {
+        $freeSpace = @disk_free_space($path);
+        $totalSpace = @disk_total_space($path);
+
+        if ($freeSpace === false || $totalSpace === false || $totalSpace <= 0) {
+            return null;
+        }
+
+        return [
+            'free' => (float) $freeSpace,
+            'total' => (float) $totalSpace,
+        ];
     }
 
     /**
@@ -379,12 +414,15 @@ class ApiHealthCheck extends PageSpeed
     protected function getLoadAverage()
     {
         if (function_exists('sys_getloadavg')) {
-            $load = sys_getloadavg();
-            return [
-                '1min' => round($load[0], 2),
-                '5min' => round($load[1], 2),
-                '15min' => round($load[2], 2),
-            ];
+            $load = @sys_getloadavg();
+
+            if (is_array($load) && count($load) >= 3) {
+                return [
+                    '1min' => round($load[0], 2),
+                    '5min' => round($load[1], 2),
+                    '15min' => round($load[2], 2),
+                ];
+            }
         }
 
         return null;

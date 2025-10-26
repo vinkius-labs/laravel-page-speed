@@ -79,6 +79,56 @@ class ApiResponseCacheTest extends TestCase
     }
 
     /**
+     * Test: Mutations invalidate cached GET responses.
+     */
+    public function test_mutating_requests_invalidate_cache(): void
+    {
+        $initialJson = json_encode(['id' => 1, 'name' => 'Initial']);
+        $updatedJson = json_encode(['id' => 1, 'name' => 'Updated']);
+
+        $getRequest = Request::create('/api/users/1', 'GET');
+        $mutationRequest = Request::create('/api/users/1', 'PUT');
+
+        $initialResponse = new Response($initialJson, 200, ['Content-Type' => 'application/json']);
+        $updatedResponse = new Response($updatedJson, 200, ['Content-Type' => 'application/json']);
+
+        // Ensure cache key is identical for GET and mutation requests
+        $reflection = new \ReflectionMethod(ApiResponseCache::class, 'generateCacheKey');
+        $reflection->setAccessible(true);
+        $cacheKey = $reflection->invoke($this->middleware, $getRequest);
+        $this->assertSame($cacheKey, $reflection->invoke($this->middleware, $mutationRequest));
+
+        // Seed cache with initial GET response
+        $this->middleware->handle($getRequest, function () use ($initialResponse) {
+            return $initialResponse;
+        });
+
+        $this->assertTrue(Cache::store('array')->has($cacheKey));
+
+        // Confirm cached response is used
+        $cachedResponse = $this->middleware->handle($getRequest, function () {
+            throw new \Exception('Should be served from cache');
+        });
+
+        $this->assertEquals('HIT', $cachedResponse->headers->get('X-Cache-Status'));
+
+        // Perform mutation which should invalidate cache
+        $this->middleware->handle($mutationRequest, function () {
+            return new Response('', 204);
+        });
+
+        $this->assertFalse(Cache::store('array')->has($cacheKey));
+
+        // Next GET should be treated as cache miss and return updated content
+        $freshResponse = $this->middleware->handle($getRequest, function () use ($updatedResponse) {
+            return $updatedResponse;
+        });
+
+        $this->assertEquals('MISS', $freshResponse->headers->get('X-Cache-Status'));
+        $this->assertEquals($updatedJson, $freshResponse->getContent());
+    }
+
+    /**
      * Test: Different query strings create different cache keys
      */
     public function test_different_query_strings_create_different_cache_keys(): void

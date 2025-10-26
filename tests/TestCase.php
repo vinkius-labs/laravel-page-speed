@@ -26,7 +26,7 @@ abstract class TestCase extends Orchestra
 
     private function getBoilerplateHTML()
     {
-        return file_get_contents(__DIR__ .'/Boilerplate/index.html');
+        return file_get_contents(__DIR__ . '/Boilerplate/index.html');
     }
 
     protected function getPackageProviders($app)
@@ -51,7 +51,7 @@ abstract class TestCase extends Orchestra
     {
         config(['laravel-page-speed.enable' => true]);
         config(['laravel-page-speed.skip' => []]);
-        
+
         // Configure database for testing (especially for prefer-lowest scenarios)
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
@@ -59,10 +59,10 @@ abstract class TestCase extends Orchestra
             'database' => ':memory:',
             'prefix' => '',
         ]);
-        
+
         // Configure cache for testing
         $app['config']->set('cache.default', 'array');
-        
+
         // Configure queue for testing
         $app['config']->set('queue.default', 'sync');
     }

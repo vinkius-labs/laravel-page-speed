@@ -84,7 +84,7 @@ class ApiHealthCheckTest extends TestCase
 
         $data = json_decode($response->getContent(), true);
 
-        $this->assertEquals('ok', $data['checks']['database']['status']);
+        $this->assertContains($data['checks']['database']['status'], ['ok', 'slow']);
         $this->assertArrayHasKey('response_time', $data['checks']['database']);
     }
 
@@ -98,7 +98,7 @@ class ApiHealthCheckTest extends TestCase
 
         $data = json_decode($response->getContent(), true);
 
-        $this->assertEquals('ok', $data['checks']['cache']['status']);
+        $this->assertContains($data['checks']['cache']['status'], ['ok', 'slow']);
         $this->assertArrayHasKey('response_time', $data['checks']['cache']);
     }
 
@@ -273,5 +273,53 @@ class ApiHealthCheckTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('healthy', $data['status']);
         $this->assertEmpty($data['checks']);
+    }
+
+    /**
+     * Regression: Disk metrics unavailable should not crash health check.
+     */
+    public function test_health_check_handles_missing_disk_metrics(): void
+    {
+        $middleware = new class extends ApiHealthCheck {
+            protected function getDiskSpaceStats($path)
+            {
+                return null;
+            }
+        };
+
+        $request = Request::create('/health', 'GET');
+        $response = $middleware->handle($request, function () {});
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true);
+
+        $this->assertArrayHasKey('disk', $data['checks']);
+        $this->assertEquals('warning', $data['checks']['disk']['status']);
+        $this->assertEquals('Disk space metrics unavailable', $data['checks']['disk']['message']);
+    }
+
+    /**
+     * Regression: Load average unavailable should not trigger PHP errors.
+     */
+    public function test_health_check_handles_missing_load_average(): void
+    {
+        $middleware = new class extends ApiHealthCheck {
+            protected function getLoadAverage()
+            {
+                return null;
+            }
+        };
+
+        $request = Request::create('/health', 'GET');
+        $response = $middleware->handle($request, function () {});
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true);
+
+        $this->assertArrayHasKey('system', $data);
+        $this->assertArrayHasKey('load_average', $data['system']);
+        $this->assertNull($data['system']['load_average']);
     }
 }

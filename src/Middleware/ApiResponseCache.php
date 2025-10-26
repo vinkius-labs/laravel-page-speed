@@ -60,8 +60,12 @@ class ApiResponseCache extends PageSpeed
     public function handle($request, Closure $next)
     {
         // Only cache GET requests
+        // Mutating requests should bust relevant cache entries
         if (! $request->isMethod('GET')) {
-            return $next($request);
+            $response = $next($request);
+            $this->invalidateCacheIfNeeded($request);
+
+            return $response;
         }
 
         // Check if caching is enabled
@@ -93,6 +97,26 @@ class ApiResponseCache extends PageSpeed
         }
 
         return $response;
+    }
+
+    /**
+     * Invalidate cache entries for mutating requests when configured.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return void
+     */
+    protected function invalidateCacheIfNeeded($request)
+    {
+        if (! config('laravel-page-speed.api.cache.enabled', false)) {
+            return;
+        }
+
+        $methods = config('laravel-page-speed.api.cache.purge_methods', ['POST', 'PUT', 'PATCH', 'DELETE']);
+        if (! in_array(strtoupper($request->getMethod()), $methods, true)) {
+            return;
+        }
+
+        $this->invalidateCache($request);
     }
 
     /**
@@ -159,6 +183,7 @@ class ApiResponseCache extends PageSpeed
         try {
             $ttl = $this->getCacheTTL($request);
             $driver = config('laravel-page-speed.api.cache.driver', 'redis');
+            $store = Cache::store($driver);
 
             $cacheData = [
                 'content' => $response->getContent(),
@@ -170,11 +195,8 @@ class ApiResponseCache extends PageSpeed
             // Use cache tags if supported (Redis, Memcached)
             $tags = $this->getCacheTags($request);
 
-            if (! empty($tags) && in_array($driver, ['redis', 'memcached'])) {
-                Cache::store($driver)->tags($tags)->put($cacheKey, $cacheData, $ttl);
-            } else {
-                Cache::store($driver)->put($cacheKey, $cacheData, $ttl);
-            }
+            $store->put($cacheKey, $cacheData, $ttl);
+            $this->indexCacheKey($store, $cacheKey, $tags, $ttl);
 
             Log::debug('API response cached', [
                 'key' => $cacheKey,
@@ -187,6 +209,124 @@ class ApiResponseCache extends PageSpeed
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Invalidate cached entries related to a mutation request.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return void
+     */
+    protected function invalidateCache($request)
+    {
+        $invalidated = false;
+
+        try {
+            $driver = config('laravel-page-speed.api.cache.driver', 'redis');
+            $store = Cache::store($driver);
+            $tags = $this->getCacheTags($request);
+
+            if (! empty($tags)) {
+                $invalidated = $this->flushIndexedKeys($store, $tags);
+            }
+
+            if (! $invalidated) {
+                $cacheKey = $this->generateCacheKey($request);
+                $invalidated = $store->forget($cacheKey);
+            }
+        } catch (\Exception $e) {
+            Log::warning('API cache invalidation failed', [
+                'method' => $request->getMethod(),
+                'uri' => $request->getRequestUri(),
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $invalidated;
+    }
+
+    /**
+     * Determine if cache store supports tags.
+     *
+     * @param  \Illuminate\Cache\Repository $store
+     * @return bool
+     */
+    /**
+     * Keep index of cache keys per tag group for manual invalidation.
+     *
+     * @param  \Illuminate\Cache\Repository $store
+     * @param  string $cacheKey
+     * @param  array $tags
+     * @param  int $ttl
+     * @return void
+     */
+    protected function indexCacheKey($store, $cacheKey, array $tags, $ttl)
+    {
+        if (empty($tags)) {
+            return;
+        }
+
+        try {
+            $indexKey = $this->getTagIndexKey($tags);
+            $keys = $store->get($indexKey, []);
+            $keys[$cacheKey] = now()->addSeconds($ttl)->getTimestamp();
+
+            // Keep index fresh slightly longer than cache TTL to ensure cleanup
+            $store->put($indexKey, $keys, max($ttl, 600));
+        } catch (\Exception $e) {
+            Log::debug('API cache index write failed', [
+                'key' => $cacheKey,
+                'tags' => $tags,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Flush cached responses tracked under tags index.
+     *
+     * @param  \Illuminate\Cache\Repository $store
+     * @param  array $tags
+     * @return bool
+     */
+    protected function flushIndexedKeys($store, array $tags)
+    {
+        try {
+            $indexKey = $this->getTagIndexKey($tags);
+            $keys = $store->get($indexKey, []);
+
+            if (empty($keys)) {
+                return false;
+            }
+
+            foreach (array_keys($keys) as $cacheKey) {
+                $store->forget($cacheKey);
+            }
+
+            $store->forget($indexKey);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::debug('API cache index flush failed', [
+                'tags' => $tags,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Build deterministic index key for a given tag list.
+     *
+     * @param  array $tags
+     * @return string
+     */
+    protected function getTagIndexKey(array $tags)
+    {
+        sort($tags);
+
+        return self::CACHE_PREFIX . 'tag_index:' . md5(implode('|', $tags));
     }
 
     /**

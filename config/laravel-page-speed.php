@@ -130,6 +130,7 @@ return [
                 'application/xml',
                 'application/vnd.api+json',
             ],
+            'purge_methods' => ['POST', 'PUT', 'PATCH', 'DELETE'], // HTTP verbs that invalidate cached GETs
         ],
 
         /*
