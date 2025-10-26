@@ -19,6 +19,7 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:2fl3UtcWC66FVXoS8qvwvEogzwk5qPqxZ1h5rJNqx8I="/>
         <env name="DB_CONNECTION" value="sqlite"/>
