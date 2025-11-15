@@ -11,7 +11,7 @@ abstract class TestCase extends Orchestra
     protected $html;
     protected $middleware;
     protected $request;
-    public $latestResponse;
+    public static $latestResponse;
 
     abstract protected function getMiddleware();
 
