@@ -4,6 +4,8 @@ All notable changes to `laravel-page-speed` will be documented in this file.
 
 ## [Unreleased]
 
+## [4.3.2] - 2025-11-15
+
 ### Fixed
 - 🐛 **InlineCss Middleware**: Fixed regex pattern to prevent matching framework-specific class attributes (Issues #75, #133, #154)
   - Changed from `/class="(.*?)"/` to `/(?<![-:])class="(.*?)"/i` using negative lookbehind
