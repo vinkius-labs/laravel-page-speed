@@ -7,7 +7,7 @@
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/dt/renatomarinho/laravel-page-speed?style=flat-square" alt="Total Downloads"></a>
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/dd/vinkius-labs/laravel-page-speed?style=flat-square" alt="Daily Downloads"></a>
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/l/vinkius-labs/laravel-page-speed?style=flat-square" alt="License"></a>
-    <a href="https://github.com/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/github/stars/vinkius-labs/laravel-page-speed?style=flat-square" alt="GitHub Stars"></a>
+    <a href="https://packagist.org/packages/renatomarinho/laravel-page-speed"><img src="https://img.shields.io/github/stars/vinkius-labs/laravel-page-speed?style=flat-square" alt="GitHub Stars"></a>
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/php-v/vinkius-labs/laravel-page-speed?style=flat-square" alt="PHP Version"></a>
 </p>
 
