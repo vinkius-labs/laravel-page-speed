@@ -11,13 +11,12 @@
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/php-v/vinkius-labs/laravel-page-speed?style=flat-square" alt="PHP Version"></a>
 </p>
 
-
-
 # Laravel Page Speed
 
 Laravel Page Speed delivers an end-to-end optimization pipeline for Blade-rendered pages and REST APIs with measurable gains in latency, bandwidth, and resiliency.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Optimization Pipelines](#optimization-pipelines)
 - [Quick Integration](#quick-integration)
@@ -30,17 +29,19 @@ Laravel Page Speed delivers an end-to-end optimization pipeline for Blade-render
 
 - **Dual scope**: optimizes rendered HTML and JSON/XML payloads without modifying your business payloads.
 - **Composable stack**: enable only the middleware you need through `config/laravel-page-speed.php`.
-- **Store-agnostic**: works with Redis, Memcached, DynamoDB (via cache tags), file, or array drivers across Laravel 10–12.
+- **Store-agnostic**: works with Redis, Memcached, DynamoDB (via cache tags), file, or array drivers across Laravel 10–13.
 - **Built for observability**: exposes latency, memory usage, cache hits, and circuit status via standard HTTP headers.
 
 ## Optimization Pipelines
 
 ### Web (HTML/Blade)
+
 - Structured HTML minification and comment stripping that stay compatible with Bootstrap, Tailwind, and Livewire.
 - Targeted critical CSS inlining to reduce render-blocking round trips.
 - Script deferral and DNS prefetching that maintain execution order through `data-ps-*` guards.
 
 ### APIs (REST/JSON)
+
 - Adaptive compression (Brotli first, Gzip fallback) with configurable size thresholds to avoid overhead on small payloads.
 - Response caching with method-aware invalidation, dynamic tag derivation per path segment, and hit-rate metrics.
 - Pre-hardened security headers (HSTS, CSP, Permissions-Policy) and an automatic circuit breaker with customizable fallbacks.
@@ -49,6 +50,7 @@ Laravel Page Speed delivers an end-to-end optimization pipeline for Blade-render
 ## Quick Integration
 
 ### Web Middleware
+
 Choose the registration pattern that matches your Laravel install:
 
 **Laravel 10.x (`app/Http/Kernel.php`)**
@@ -68,7 +70,7 @@ protected $middlewareGroups = [
 ];
 ```
 
-**Laravel 11.x and 12.x (`bootstrap/app.php`)**
+**Laravel 11.x, 12.x and 13.x (`bootstrap/app.php`)**
 
 Use the middleware configurator introduced in Laravel 11. Extend the existing `->withMiddleware` closure:
 
@@ -92,6 +94,7 @@ return Application::configure(basePath: __DIR__.'/../')
 ```
 
 ### API Middleware
+
 Attach only the middleware that fits your API architecture.
 
 **Laravel 10.x (`app/Http/Kernel.php`)**
@@ -111,7 +114,7 @@ protected $middlewareGroups = [
 ];
 ```
 
-**Laravel 11.x and 12.x (`bootstrap/app.php`)**
+**Laravel 11.x, 12.x and 13.x (`bootstrap/app.php`)**
 
 Inside the same `->withMiddleware` closure from the Web section, append the API stack:
 
@@ -146,14 +149,14 @@ API_CACHE_DYNAMIC_TAGS=true
 
 ## Measured Impact
 
-| Metric                        | Before         | After (cache hit) | Delta  |
-|-------------------------------|----------------|-------------------|--------|
-| Page Size (Blade)             | 245 KB         | 159 KB            | -35%   |
-| First Paint                   | 1.8 s          | 1.2 s             | -33%   |
-| API Payload                   | 15.2 KB        | 2.8 KB            | -82%   |
-| Average API Latency           | 450 ms         | 2 ms              | -99.6% |
-| SQL Queries (100-item list)   | 35             | 0                 | -100%  |
-| Monthly Bandwidth (estimate)  | 15 TB          | 3 TB              | -80%   |
+| Metric                       | Before  | After (cache hit) | Delta  |
+| ---------------------------- | ------- | ----------------- | ------ |
+| Page Size (Blade)            | 245 KB  | 159 KB            | -35%   |
+| First Paint                  | 1.8 s   | 1.2 s             | -33%   |
+| API Payload                  | 15.2 KB | 2.8 KB            | -82%   |
+| Average API Latency          | 450 ms  | 2 ms              | -99.6% |
+| SQL Queries (100-item list)  | 35      | 0                 | -100%  |
+| Monthly Bandwidth (estimate) | 15 TB   | 3 TB              | -80%   |
 
 Reference scenario: 1M requests/day with a 65% cache hit rate.
 

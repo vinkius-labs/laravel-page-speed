@@ -15,15 +15,15 @@ Concise briefing for engineering leaders evaluating the package for large-scale 
 
 ## 2. Capability Matrix
 
-| Layer          | Feature                                     | Default | Key Dependencies              |
-|----------------|---------------------------------------------|---------|-------------------------------|
-| Web (Blade)    | HTML minification, CSS inlining, JS defer    | On      | None (works with SSR output)  |
-| API Security   | HSTS, CSP, Referrer & Permissions headers    | On      | HTTPS enforcement recommended |
-| API Caching    | Path- & verb-aware response cache            | Off     | Cache store with tag support  |
-| API Validation | ETag generation + conditional requests       | On      | Persistent storage optional   |
-| API Compression| Brotli/Gzip negotiation                      | On      | ext-brotli or zlib extension  |
-| Resilience     | Circuit breaker with fallback responses      | Off     | Cache / store for counters    |
-| Diagnostics    | Health endpoint with subsystem probes        | Off     | DB/cache connectivity         |
+| Layer           | Feature                                   | Default | Key Dependencies              |
+| --------------- | ----------------------------------------- | ------- | ----------------------------- |
+| Web (Blade)     | HTML minification, CSS inlining, JS defer | On      | None (works with SSR output)  |
+| API Security    | HSTS, CSP, Referrer & Permissions headers | On      | HTTPS enforcement recommended |
+| API Caching     | Path- & verb-aware response cache         | Off     | Cache store with tag support  |
+| API Validation  | ETag generation + conditional requests    | On      | Persistent storage optional   |
+| API Compression | Brotli/Gzip negotiation                   | On      | ext-brotli or zlib extension  |
+| Resilience      | Circuit breaker with fallback responses   | Off     | Cache / store for counters    |
+| Diagnostics     | Health endpoint with subsystem probes     | Off     | DB/cache connectivity         |
 
 ---
 
@@ -32,7 +32,7 @@ Concise briefing for engineering leaders evaluating the package for large-scale 
 Reference workload: 1 million API requests/day, 65% cache hit rate, average payload 15 KB.
 
 | KPI                         | Baseline | With Package | Impact              |
-|-----------------------------|----------|--------------|---------------------|
+| --------------------------- | -------- | ------------ | ------------------- |
 | Daily bandwidth             | 15 TB    | 3 TB         | -80%                |
 | Average API latency         | 450 ms   | 180 ms       | -60% (cache warmed) |
 | Database query volume       | 100%     | 35%          | -65%                |
@@ -69,20 +69,20 @@ For Blade-rendered pages measured with Lighthouse:
 
 ## 5. Risk & Mitigation Checklist
 
-| Risk                                 | Exposure Level | Mitigation                                                         |
-|--------------------------------------|---------------|--------------------------------------------------------------------|
-| Over-aggressive HTML minification    | Low           | Use `skip` patterns for admin/debug routes; mark components with `data-ps-preserve`.
-| Cache serving stale user-specific data | Medium        | Enable `per_user` segmentation and short TTLs for mutable resources.|
-| Compression overhead on tiny payloads | Low           | Raise `API_MIN_COMPRESSION_SIZE` to 2 KB for chatty endpoints.      |
-| Circuit breaker false positives      | Low           | Tune `failure_threshold` and `timeout`; monitor `X-Circuit-Breaker-State` trends.
-| Health endpoint leaking internals    | Low           | Mount behind internal auth or restrict by IP; redact sensitive data in config.
+| Risk                                   | Exposure Level | Mitigation                                                                           |
+| -------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| Over-aggressive HTML minification      | Low            | Use `skip` patterns for admin/debug routes; mark components with `data-ps-preserve`. |
+| Cache serving stale user-specific data | Medium         | Enable `per_user` segmentation and short TTLs for mutable resources.                 |
+| Compression overhead on tiny payloads  | Low            | Raise `API_MIN_COMPRESSION_SIZE` to 2 KB for chatty endpoints.                       |
+| Circuit breaker false positives        | Low            | Tune `failure_threshold` and `timeout`; monitor `X-Circuit-Breaker-State` trends.    |
+| Health endpoint leaking internals      | Low            | Mount behind internal auth or restrict by IP; redact sensitive data in config.       |
 
 ---
 
 ## 6. Testing & Quality Signals
 
 - **Automated coverage**: 240+ tests (unit + integration) across middleware, cache tagging, and health probes.
-- **CI matrix**: Laravel 10/11/12 on PHP 8.2/8.3 with prefer-lowest/prefer-stable dependency sweeps.
+- **CI matrix**: Laravel 10/11/12/13 on PHP 8.2/8.3 with prefer-lowest/prefer-stable dependency sweeps.
 - **Manual validation**: Scenario playbooks in `docs/API-EXAMPLES.md` cover e-commerce, SaaS, fintech, and gateway workloads.
 - **Chaos validation**: Cache backend outages and disk metric exceptions handled gracefully (see `tests/Middleware/ApiHealthCheckTest.php`).
 
@@ -116,6 +116,7 @@ For Blade-rendered pages measured with Lighthouse:
 Laravel Page Speed is production-proven. When paired with disciplined rollout and monitoring, it delivers immediate performance uplift with minimal engineering cost.
 
 ### Documentation Quality
+
 - ✅ Professional README
 - ✅ Complete guides
 - ✅ Real-world examples
@@ -126,15 +127,17 @@ Laravel Page Speed is production-proven. When paired with disciplined rollout an
 ## 🎉 Success Metrics
 
 ### Package Transformation
-| Aspect | Before | After |
-|--------|--------|-------|
-| **Focus** | HTML only | HTML + API |
-| **Middlewares** | 8 (web) | 15 total (8 web + 7 API) |
-| **Tests** | 142 | 189 (+47 new API tests) |
-| **Documentation** | Basic README | Professional multi-doc |
-| **Use Cases** | Web pages | Web + API + Microservices |
+
+| Aspect            | Before       | After                     |
+| ----------------- | ------------ | ------------------------- |
+| **Focus**         | HTML only    | HTML + API                |
+| **Middlewares**   | 8 (web)      | 15 total (8 web + 7 API)  |
+| **Tests**         | 142          | 189 (+47 new API tests)   |
+| **Documentation** | Basic README | Professional multi-doc    |
+| **Use Cases**     | Web pages    | Web + API + Microservices |
 
 ### Real Impact
+
 - 💰 **$4,320/year** bandwidth savings (typical API)
 - ⚡ **99.6% faster** API responses (with cache)
 - 🔒 **100% security** headers coverage
