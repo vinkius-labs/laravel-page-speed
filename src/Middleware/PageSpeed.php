@@ -210,17 +210,24 @@ abstract class PageSpeed
 
         // Pattern for normal tags
         if (!empty($normalTags)) {
-            $normalPattern = '/\<\s*(' . implode('|', $normalTags) . ')[^>]*\>((.|\n)*?)\<\s*\/\s*\1\>/i';
+            // OPTIMIZATION 1: Use .*? and the modifier 's' (PCRE_DOTALL)
+            // This allows dot to capture line breaks without creating nested groups.
+            // It is dozens of times faster and does not clog the PCRE stack.
+            $normalPattern = '/\<\s*(' . implode('|', $normalTags) . ')[^>]*\>.*?\<\s*\/\s*\1\>/is';
             $patterns[] = $normalPattern;
         }
 
-        // Performance: Use preg_replace_callback for single-pass processing
-        // This is much faster than iterating and doing multiple str_replace on the entire buffer
         foreach ($patterns as $pattern) {
-            $buffer = preg_replace_callback($pattern, function ($matches) use ($regex, $replace) {
-                // Apply the regex replacement only within this tag
-                return preg_replace($regex, $replace, $matches[0]);
+            $result = preg_replace_callback($pattern, function ($matches) use ($regex, $replace) {
+                // OPTIMIZATION 2: Protection from internal error.
+                // If deleting comments inside the tag failed (returned null),
+                // we simply return the original content of the tag, rather than breaking the entire page.
+                return preg_replace($regex, $replace, $matches[0]) ?? $matches[0];
             }, $buffer);
+
+            // OPTIMIZATION 3: Protection from external error.
+            // If the search for the <script> tags themselves has dropped, we leave the entire buffer unchanged.
+            $buffer = $result ?? $buffer;
         }
 
         return $buffer;
