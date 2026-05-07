@@ -216,7 +216,9 @@ abstract class PageSpeed
             $normalPattern = '/\<\s*(' . implode('|', $normalTags) . ')[^>]*\>.*?\<\s*\/\s*\1\>/is';
             $patterns[] = $normalPattern;
         }
-
+        
+        // Performance: Use preg_replace_callback for single-pass processing
+        // This is much faster than iterating and doing multiple str_replace on the entire buffer
         foreach ($patterns as $pattern) {
             $result = preg_replace_callback($pattern, function ($matches) use ($regex, $replace) {
                 // OPTIMIZATION 2: Protection from internal error.
