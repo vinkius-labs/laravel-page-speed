@@ -4,6 +4,19 @@ All notable changes to `laravel-page-speed` will be documented in this file.
 
 ## [Unreleased]
 
+## [4.4.2] - 2026-05-08
+
+- 🙏 **Special Thanks**: Huge thanks to [@DmytroGural](https://github.com/DmytroGural) for contributing these fixes and performance optimizations in PR #217!
+
+### Fixed
+
+- 🐛 **PageSpeed Base Class**: Fixed PCRE stack exhaustion and blank pages in `replaceInsideHtmlTags` by utilizing the `s` (PCRE_DOTALL) modifier to avoid nested groups, and added fallback to original content to prevent page breaks on regex failures.
+- 🐛 **CollapseWhitespace Middleware**: Fixed issue where Livewire and Alpine.js attributes (`wire:snapshot`, `wire:effects`, `x-data`, `x-init`) were corrupted during minification by explicitly preserving them.
+
+### Changed
+
+- ⚡ **CollapseWhitespace Middleware**: Optimized `restorePreservedContent` by replacing `foreach` + `str_replace` loop with native `strtr()`, significantly improving performance on large HTML payloads.
+
 ## [4.4.1] - 2026-03-14
 
 ### Fixed
