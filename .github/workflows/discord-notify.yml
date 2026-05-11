@@ -1,0 +1,87 @@
+name: Discord Notifications
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify-commit:
+    name: Notify Discord — commit on main
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          COMMIT_SHA:      ${{ github.sha }}
+          COMMIT_MSG:      ${{ github.event.head_commit.message }}
+          COMMIT_URL:      ${{ github.event.head_commit.url }}
+          COMPARE_URL:     ${{ github.event.compare }}
+          AUTHOR_NAME:     ${{ github.event.head_commit.author.name }}
+          AUTHOR_LOGIN:    ${{ github.actor }}
+          BRANCH:          ${{ github.ref_name }}
+          REPO:            ${{ github.repository }}
+        run: |
+          STAT=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null || true)
+          export STAT
+
+          python3 << 'PYEOF'
+          import json, os, subprocess, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          webhook      = os.environ["DISCORD_WEBHOOK"]
+          sha          = os.environ["COMMIT_SHA"][:7]
+          msg          = os.environ["COMMIT_MSG"].splitlines()[0][:80]
+          commit_url   = os.environ["COMMIT_URL"]
+          compare_url  = os.environ["COMPARE_URL"]
+          author_name  = os.environ["AUTHOR_NAME"]
+          author_login = os.environ["AUTHOR_LOGIN"]
+          branch       = os.environ["BRANCH"]
+          repo         = os.environ["REPO"]
+          stat         = os.environ.get("STAT", "").strip()
+
+          avatar = f"https://avatars.githubusercontent.com/{author_login}?size=64"
+
+          fields = [
+            {"name": "🌿 Branch",  "value": f"`{branch}`",  "inline": True},
+            {"name": "👤 Author",  "value": author_name,     "inline": True},
+            {"name": "🔗 Compare", "value": f"[View diff]({compare_url})", "inline": True},
+          ]
+          if stat:
+            fields.append({"name": "📊 Diff", "value": stat, "inline": False})
+
+          payload = {
+            "embeds": [{
+              "author": {
+                "name":     f"@{author_login}",
+                "url":      f"https://github.com/{author_login}",
+                "icon_url": avatar,
+              },
+              "title":  f"[{sha}] {msg}",
+              "url":    commit_url,
+              "color":  6365423,
+              "fields": fields,
+              "footer": {
+                "text":     repo,
+                "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              },
+              "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }]
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+          req  = urllib.request.Request(
+            webhook, data=data,
+            headers={"Content-Type": "application/json"}
+          )
+          try:
+            urllib.request.urlopen(req)
+            print("Discord notified OK")
+          except urllib.error.HTTPError as e:
+            print(f"Discord error {e.code}: {e.read().decode()}")
+            raise
+          PYEOF
