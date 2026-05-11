@@ -11,6 +11,9 @@
     <a href="https://packagist.org/packages/vinkius-labs/laravel-page-speed"><img src="https://img.shields.io/packagist/php-v/vinkius-labs/laravel-page-speed?style=flat-square" alt="PHP Version"></a>
 </p>
 
+> **Using this in a Laravel project?** Come talk to us — [**Join the Discord →**](https://discord.gg/pKEdyxAYD)
+> Performance wins, edge cases, and what you're shipping. The maintainer is in there.
+
 # Laravel Page Speed
 
 Laravel Page Speed delivers an end-to-end optimization pipeline for Blade-rendered pages and REST APIs with measurable gains in latency, bandwidth, and resiliency.
