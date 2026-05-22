@@ -4,6 +4,23 @@ All notable changes to `laravel-page-speed` will be documented in this file.
 
 ## [Unreleased]
 
+## [4.4.3] - 2026-05-22
+
+### Fixed
+
+- 🐛 **ApiCircuitBreaker**: Fixed cache driver inconsistency — circuit breaker state now uses the configured `API_CACHE_DRIVER` instead of the default cache driver, ensuring consistent state sharing in distributed environments.
+- 🐛 **ApiPerformanceHeaders**: Fixed `X-Performance-Warning` header being silently overwritten when both high query count and slow request conditions triggered simultaneously. Both warnings are now combined.
+- 🐛 **ApiHealthCheck**: Fixed queue health check returning a false positive `ok` status without actually probing the queue driver. Now calls `Queue::connection()->size()` to verify connectivity.
+- 🐛 **ApiETag**: Fixed unconditional `Cache-Control` header overwrite that could conflict with application-level or other middleware caching directives. Now respects existing headers.
+- 🐛 **ApiResponseCache**: Removed unnecessary `new Response()` instantiation in `shouldCache()` — uses `isEnable()` directly.
+
+### Changed
+
+- 🛡️ **PageSpeed Base**: Added `Content-Type` guard in the base `handle()` method — web middleware now skips non-HTML responses (`application/json`, `application/xml`, etc.), preventing silent data corruption on misconfigured middleware groups.
+- 🛡️ **TrimUrls**: Protocol stripping (`https:`, `http:`) is now limited to `src`, `href`, and `action` attributes only, preventing corruption of JavaScript strings, meta tags, and SVG namespaces.
+- 🛡️ **ApiSecurityHeaders**: Changed `X-XSS-Protection` from deprecated `1; mode=block` to `0` as recommended by MDN, relying on CSP for XSS protection instead.
+- 📦 **composer.json**: Simplified PHP version constraint from `^8.2 || ^8.3` to `^8.2`, which correctly covers PHP 8.2, 8.3, 8.4, and future 8.x releases.
+
 ## [4.4.2] - 2026-05-08
 
 - 🙏 **Special Thanks**: Huge thanks to [@DmytroGural](https://github.com/DmytroGural) for contributing these fixes and performance optimizations in PR #217!

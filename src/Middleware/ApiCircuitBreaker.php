@@ -69,6 +69,21 @@ class ApiCircuitBreaker extends PageSpeed
     }
 
     /**
+     * Get the configured cache store for circuit breaker state.
+     *
+     * Uses the same driver configured for API cache to ensure
+     * consistent state sharing in distributed environments.
+     *
+     * @return \Illuminate\Cache\Repository
+     */
+    protected function getCacheStore()
+    {
+        $driver = config('laravel-page-speed.api.cache.driver', config('cache.default'));
+
+        return Cache::store($driver);
+    }
+
+    /**
      * Handle an incoming request.
      *
      * @param  \Illuminate\Http\Request $request
@@ -235,7 +250,8 @@ class ApiCircuitBreaker extends PageSpeed
     protected function getCircuitState($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
-        $state = Cache::get($cacheKey);
+        $store = $this->getCacheStore();
+        $state = $store->get($cacheKey);
 
         if ($state === null) {
             return [
@@ -253,7 +269,7 @@ class ApiCircuitBreaker extends PageSpeed
             if (time() - $openedAt >= $timeout) {
                 // Transition to half-open
                 $state['state'] = self::STATE_HALF_OPEN;
-                Cache::put($cacheKey, $state, 3600);
+                $store->put($cacheKey, $state, 3600);
             }
         }
 
@@ -295,7 +311,8 @@ class ApiCircuitBreaker extends PageSpeed
     protected function recordFailure($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
-        $state = Cache::get($cacheKey, [
+        $store = $this->getCacheStore();
+        $state = $store->get($cacheKey, [
             'state' => self::STATE_CLOSED,
             'failures' => 0,
             'opened_at' => null,
@@ -304,10 +321,10 @@ class ApiCircuitBreaker extends PageSpeed
         $state['failures']++;
         $state['last_failure'] = time();
 
-        Cache::put($cacheKey, $state, 3600);
+        $store->put($cacheKey, $state, 3600);
 
         // Update metrics
-        Cache::increment(self::METRICS_PREFIX . $circuitId . ':failures');
+        $store->increment(self::METRICS_PREFIX . $circuitId . ':failures');
     }
 
     /**
@@ -319,16 +336,17 @@ class ApiCircuitBreaker extends PageSpeed
     protected function recordSuccess($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
-        $state = Cache::get($cacheKey);
+        $store = $this->getCacheStore();
+        $state = $store->get($cacheKey);
 
         if ($state && $state['failures'] > 0) {
             // Reset failure count on success
             $state['failures'] = max(0, $state['failures'] - 1);
-            Cache::put($cacheKey, $state, 3600);
+            $store->put($cacheKey, $state, 3600);
         }
 
         // Update metrics
-        Cache::increment(self::METRICS_PREFIX . $circuitId . ':successes');
+        $store->increment(self::METRICS_PREFIX . $circuitId . ':successes');
     }
 
     /**
@@ -340,7 +358,7 @@ class ApiCircuitBreaker extends PageSpeed
     protected function getFailureCount($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
-        $state = Cache::get($cacheKey);
+        $state = $this->getCacheStore()->get($cacheKey);
 
         return $state['failures'] ?? 0;
     }
@@ -368,6 +386,7 @@ class ApiCircuitBreaker extends PageSpeed
     protected function openCircuit($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
+        $store = $this->getCacheStore();
 
         $state = [
             'state' => self::STATE_OPEN,
@@ -375,10 +394,10 @@ class ApiCircuitBreaker extends PageSpeed
             'opened_at' => time(),
         ];
 
-        Cache::put($cacheKey, $state, 3600);
+        $store->put($cacheKey, $state, 3600);
 
         // Update metrics
-        Cache::increment(self::METRICS_PREFIX . $circuitId . ':opens');
+        $store->increment(self::METRICS_PREFIX . $circuitId . ':opens');
     }
 
     /**
@@ -390,6 +409,7 @@ class ApiCircuitBreaker extends PageSpeed
     protected function closeCircuit($circuitId)
     {
         $cacheKey = self::CIRCUIT_PREFIX . $circuitId;
+        $store = $this->getCacheStore();
 
         $state = [
             'state' => self::STATE_CLOSED,
@@ -397,10 +417,10 @@ class ApiCircuitBreaker extends PageSpeed
             'opened_at' => null,
         ];
 
-        Cache::put($cacheKey, $state, 3600);
+        $store->put($cacheKey, $state, 3600);
 
         // Update metrics
-        Cache::increment(self::METRICS_PREFIX . $circuitId . ':closes');
+        $store->increment(self::METRICS_PREFIX . $circuitId . ':closes');
     }
 
     /**
@@ -411,7 +431,7 @@ class ApiCircuitBreaker extends PageSpeed
      */
     protected function recordCircuitOpen($circuitId)
     {
-        Cache::increment(self::METRICS_PREFIX . $circuitId . ':rejected');
+        $this->getCacheStore()->increment(self::METRICS_PREFIX . $circuitId . ':rejected');
     }
 
     /**

@@ -35,6 +35,12 @@ abstract class PageSpeed
             return $response;
         }
 
+        // Only process HTML responses — skip JSON, XML, and other content types
+        $contentType = $response->headers->get('Content-Type', '');
+        if ($contentType !== '' && ! str_contains($contentType, 'text/html')) {
+            return $response;
+        }
+
         $html = $response->getContent();
         $originalSize = strlen($html);
 

@@ -71,9 +71,10 @@ class ApiSecurityHeaders extends PageSpeed
             $headers->set('X-Frame-Options', 'DENY');
         }
 
-        // XSS Protection (legacy but still useful)
+        // XSS Protection — disabled in favor of CSP
+        // MDN recommends '0' as '1; mode=block' can introduce vulnerabilities in older browsers
         if (! $headers->has('X-XSS-Protection')) {
-            $headers->set('X-XSS-Protection', '1; mode=block');
+            $headers->set('X-XSS-Protection', '0');
         }
 
         // Referrer Policy

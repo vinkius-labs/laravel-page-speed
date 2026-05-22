@@ -11,9 +11,11 @@ class TrimUrls extends PageSpeed
             return $buffer;
         }
 
+        // Only strip protocols from src, href, and action attributes
+        // to avoid breaking JavaScript, meta tags, and inline content
         $replace = [
-            '/https:/' => '',
-            '/http:/' => ''
+            '/(src|href|action)=("|\')https:/' => '$1=$2',
+            '/(src|href|action)=("|\')http:/' => '$1=$2',
         ];
 
         return $this->replace($replace, $buffer);

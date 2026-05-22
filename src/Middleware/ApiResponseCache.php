@@ -602,7 +602,7 @@ class ApiResponseCache extends PageSpeed
     protected function shouldCache($request)
     {
         // Check if middleware is enabled
-        if (! $this->shouldProcessPageSpeed($request, new \Illuminate\Http\Response())) {
+        if (! $this->isEnable()) {
             return false;
         }
 

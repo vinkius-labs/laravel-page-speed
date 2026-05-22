@@ -357,12 +357,19 @@ class ApiHealthCheck extends PageSpeed
     {
         try {
             $connection = config('queue.default');
+            $startTime = microtime(true);
 
-            // This is a basic check - you might want to customize based on your queue driver
+            Queue::connection($connection)->size();
+
+            $responseTime = round((microtime(true) - $startTime) * 1000, 2);
+            $threshold = config('laravel-page-speed.api.health.thresholds.cache_ms', 50);
+            $status = $responseTime < $threshold ? 'ok' : 'slow';
+
             return [
-                'status' => 'ok',
+                'status' => $status,
                 'message' => 'Queue system operational',
                 'connection' => $connection,
+                'response_time' => $responseTime . 'ms',
             ];
         } catch (\Exception $e) {
             return [

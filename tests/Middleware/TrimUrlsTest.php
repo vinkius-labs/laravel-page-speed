@@ -16,8 +16,11 @@ class TrimUrlsTest extends TestCase
     {
         $response = $this->middleware->handle($this->request, $this->getNext());
 
-        $this->assertStringNotContainsString("https://", $response->getContent());
-        $this->assertStringNotContainsString("http://", $response->getContent());
-        $this->assertStringContainsString("//code.jquery.com/jquery-3.2.1.min.js", $response->getContent());
+        // Protocols should be stripped from src/href/action attributes
+        $this->assertStringContainsString('src="//code.jquery.com/jquery-3.2.1.min.js"', $response->getContent());
+        $this->assertStringContainsString('src="//github.com/vinkius-labs/', $response->getContent());
+
+        // SVG xmlns with http:// should be preserved (not inside src/href/action)
+        $this->assertStringContainsString('xmlns="http://www.w3.org/2000/svg"', $response->getContent());
     }
 }

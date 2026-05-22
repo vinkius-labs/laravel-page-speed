@@ -33,7 +33,7 @@ class ApiSecurityHeadersTest extends TestCase
         $this->assertEquals('DENY', $result->headers->get('X-Frame-Options'));
 
         $this->assertTrue($result->headers->has('X-XSS-Protection'));
-        $this->assertEquals('1; mode=block', $result->headers->get('X-XSS-Protection'));
+        $this->assertEquals('0', $result->headers->get('X-XSS-Protection'));
 
         $this->assertTrue($result->headers->has('Referrer-Policy'));
         $this->assertTrue($result->headers->has('Content-Security-Policy'));

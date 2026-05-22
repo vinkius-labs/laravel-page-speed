@@ -100,7 +100,9 @@ class ApiPerformanceHeaders extends PageSpeed
         // Add slow request warning
         $slowThreshold = config('laravel-page-speed.api.slow_request_threshold', 1000); // 1 second
         if ($responseTime > $slowThreshold) {
-            $response->headers->set('X-Performance-Warning', 'Slow request detected');
+            $existing = $response->headers->get('X-Performance-Warning');
+            $slowWarning = 'Slow request detected';
+            $response->headers->set('X-Performance-Warning', $existing ? $existing . '; ' . $slowWarning : $slowWarning);
         }
 
         return $response;

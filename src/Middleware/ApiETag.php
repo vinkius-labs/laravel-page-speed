@@ -80,9 +80,12 @@ class ApiETag extends PageSpeed
             $response->headers->remove('Content-Type');
         } else {
             // Add Cache-Control header to enable caching
-            // Always set it to ensure proper caching behavior
-            $maxAge = config('laravel-page-speed.api.etag_max_age', 300); // 5 minutes default
-            $response->headers->set('Cache-Control', "private, max-age={$maxAge}, must-revalidate");
+            // Only set if not already configured by the application or other middleware
+            $currentCacheControl = $response->headers->get('Cache-Control', '');
+            if (empty($currentCacheControl) || $currentCacheControl === 'no-cache, private') {
+                $maxAge = config('laravel-page-speed.api.etag_max_age', 300); // 5 minutes default
+                $response->headers->set('Cache-Control', "private, max-age={$maxAge}, must-revalidate");
+            }
         }
 
         return $response;

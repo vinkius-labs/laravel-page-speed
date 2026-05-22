@@ -32,6 +32,7 @@ class ApiCircuitBreakerTest extends TestCase
         $this->getMiddleware();
 
         config(['laravel-page-speed.enable' => true]);
+        config(['laravel-page-speed.api.cache.driver' => 'array']);
         config(['laravel-page-speed.api.circuit_breaker.enabled' => true]);
         config(['laravel-page-speed.api.circuit_breaker.failure_threshold' => 3]);
         config(['laravel-page-speed.api.circuit_breaker.timeout' => 2]); // 2 seconds for tests
