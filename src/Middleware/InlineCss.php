@@ -8,6 +8,13 @@ class InlineCss extends PageSpeed
     private $class = [];
     private $style = [];
     private $inline = [];
+    /**
+     * Counter for generating unique class names within a single request lifecycle.
+     * 
+     * Note: In long-running processes (Laravel Octane, Swoole), this counter
+     * accumulates across requests. This is safe because generated names are
+     * scoped to each response body and never persisted.
+     */
     private static $uniqueCounter = 0;
 
     /**

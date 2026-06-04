@@ -97,6 +97,10 @@ class RemoveComments extends PageSpeed
      * Performance: Optimized regex approach instead of character-by-character loop
      * Uses negative lookbehind to avoid matching // in URLs (after :)
      * 
+     * @deprecated Use removeSingleLineCommentsFromContent() instead, which handles
+     *             multi-line template literals and complex regex literals correctly.
+     *             This method is kept for backward compatibility.
+     * 
      * @param string $line
      * @return string
      */

@@ -4,6 +4,24 @@ All notable changes to `laravel-page-speed` will be documented in this file.
 
 ## [Unreleased]
 
+## [4.4.4] - 2026-06-04
+
+### Added
+
+- ✨ **FormatsBytes Trait**: Extracted shared `formatBytes()` utility into `VinkiusLabs\LaravelPageSpeed\Traits\FormatsBytes`, eliminating code duplication across `ApiPerformanceHeaders` and `ApiHealthCheck`. Both middlewares now use the trait with the complete unit scale (B, KB, MB, GB, TB).
+
+### Fixed
+
+- 🧹 **ApiHealthCheck**: Removed unused `use Illuminate\Support\Facades\Queue` import (dead code).
+- 🧹 **ApiResponseCompression**: Removed unused `use Symfony\Component\HttpFoundation\Response` import (dead code).
+- 🧹 **ElideAttributes**: Simplified regex for `disabled` and `selected` attributes — removed redundant `(.*?)` capture group that served no purpose after the `[^ >]*` character class.
+
+### Changed
+
+- 📝 **RemoveComments**: Marked `removeSingleLineCommentFromLine()` as `@deprecated` — the production pipeline uses `removeSingleLineCommentsFromContent()` instead, which correctly handles multi-line template literals and complex regex literals.
+- 📝 **InlineCss**: Documented static `$uniqueCounter` behavior in long-running processes (Laravel Octane, Swoole) for maintainability clarity.
+- ♻️ **ApiPerformanceHeaders**: `formatBytes()` now includes TB unit (previously stopped at GB) via the shared `FormatsBytes` trait.
+
 ## [4.4.3] - 2026-05-22
 
 ### Fixed

@@ -4,6 +4,7 @@ namespace VinkiusLabs\LaravelPageSpeed\Middleware;
 
 use Closure;
 use Illuminate\Support\Facades\DB;
+use VinkiusLabs\LaravelPageSpeed\Traits\FormatsBytes;
 
 /**
  * API Performance Headers Middleware
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ApiPerformanceHeaders extends PageSpeed
 {
+    use FormatsBytes;
+
     protected $startTime;
     protected $startMemory;
     protected $requestId;
@@ -142,22 +145,5 @@ class ApiPerformanceHeaders extends PageSpeed
             date('YmdHis'),
             substr(md5(uniqid((string) mt_rand(), true)), 0, 8)
         );
-    }
-
-    /**
-     * Format bytes to human-readable format.
-     *
-     * @param int $bytes
-     * @return string
-     */
-    protected function formatBytes($bytes)
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= (1 << (10 * $pow));
-
-        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

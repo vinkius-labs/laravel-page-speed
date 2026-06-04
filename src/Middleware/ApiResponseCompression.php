@@ -3,7 +3,6 @@
 namespace VinkiusLabs\LaravelPageSpeed\Middleware;
 
 use Closure;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * API Response Compression Middleware

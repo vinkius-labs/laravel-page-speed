@@ -5,7 +5,7 @@ namespace VinkiusLabs\LaravelPageSpeed\Middleware;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Queue;
+use VinkiusLabs\LaravelPageSpeed\Traits\FormatsBytes;
 
 /**
  * API Health Check Middleware
@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Queue;
  */
 class ApiHealthCheck extends PageSpeed
 {
+    use FormatsBytes;
     /**
      * Health check results cache duration (seconds)
      */
@@ -481,23 +482,6 @@ class ApiHealthCheck extends PageSpeed
         }
 
         return $value;
-    }
-
-    /**
-     * Format bytes to human-readable format.
-     *
-     * @param int $bytes
-     * @return string
-     */
-    protected function formatBytes($bytes)
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= (1 << (10 * $pow));
-
-        return round($bytes, 2) . ' ' . $units[$pow];
     }
 
     /**
