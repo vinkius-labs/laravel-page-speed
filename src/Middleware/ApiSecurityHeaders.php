@@ -126,11 +126,6 @@ class ApiSecurityHeaders extends PageSpeed
      */
     protected function shouldAddSecurityHeaders($request, $response)
     {
-        // Check if middleware is enabled
-        if (! $this->shouldProcessPageSpeed($request, $response)) {
-            return false;
-        }
-
         // Add to all API responses
         $contentType = $response->headers->get('Content-Type', '');
 
